@@ -20,7 +20,7 @@ export default function InboxPanel() {
       </div>
 
       {sorted.length === 0 ? (
-        <p className="mt-6 font-serif italic text-ink-mute">Nothing waiting for a human.</p>
+        <p className="mt-6 font-serif text-ink-mute">Nothing waiting for a human.</p>
       ) : (
         <ul className="mt-5 flex flex-col gap-4">
           {sorted.map((h) => {
@@ -61,7 +61,7 @@ export default function InboxPanel() {
                 )}
 
                 {h.summary && (
-                  <p className="mt-4 border-t border-line pt-3 font-serif italic text-ink-soft">{h.summary}</p>
+                  <p className="mt-4 border-t border-line pt-3 font-serif text-ink-soft">{h.summary}</p>
                 )}
 
                 <div className="mt-4 flex items-center justify-between">

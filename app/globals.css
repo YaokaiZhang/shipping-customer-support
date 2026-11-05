@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Palette and type follow the reference: cream paper, ink black, Garamond + mono. */
+/* Palette and type follow the reference: cream paper, ink black, Source Serif for reading, Garamond for display, plus mono. */
 @theme {
   --color-paper: #f4f1e6;
   --color-paper-hi: #fbf9f2;
@@ -19,7 +19,8 @@
   --color-accent-green: #3d7a3a;
   --color-label-yellow: #f0e68c;
 
-  --font-serif: "EB Garamond", "Garamond", "Times New Roman", serif;
+  --font-serif: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --font-display: "EB Garamond", "Garamond", "Times New Roman", serif;
   --font-mono: "Courier Prime", "Courier New", monospace;
   --font-pixel: "VT323", monospace;
 }

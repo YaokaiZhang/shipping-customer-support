@@ -122,7 +122,7 @@ export default function CompliancePanel() {
                   onClick={() => setOpen(isOpen ? null : t.id)}
                 >
                   <span className="mono w-11 shrink-0 pt-0.5 text-[0.7rem] text-ink-mute">{t.id}</span>
-                  <span className="flex-1 font-serif italic leading-snug">{t.input}</span>
+                  <span className="flex-1 font-serif leading-snug">{t.input}</span>
                   <span className="flex shrink-0 gap-1 pt-0.5">
                     {t.rules.map((rid, k) => (
                       <span key={rid} className={`sticker ${failedRules.has(rid) ? "sticker-red" : "sticker-ink"}`} style={tilt(i + k)}>
@@ -162,7 +162,7 @@ export default function CompliancePanel() {
           <span className="mono text-sm text-ink-mute">{events.length}</span>
         </div>
         {events.length === 0 ? (
-          <p className="mt-4 font-serif italic text-ink-mute">Quiet so far.</p>
+          <p className="mt-4 font-serif text-ink-mute">Quiet so far.</p>
         ) : (
           <ul>
             {events.map((e, i) => (

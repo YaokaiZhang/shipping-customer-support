@@ -16,7 +16,7 @@ export default function LeadsPanel() {
       </div>
 
       {sorted.length === 0 ? (
-        <p className="mt-6 font-serif italic text-ink-mute">No leads yet.</p>
+        <p className="mt-6 font-serif text-ink-mute">No leads yet.</p>
       ) : (
         <ul className="mt-5 flex flex-col gap-4">
           {sorted.map((l, i) => (
@@ -57,7 +57,7 @@ export default function LeadsPanel() {
               )}
 
               {l.summary && (
-                <p className="mt-3 border-t border-line pt-3 font-serif italic text-ink-soft">{l.summary}</p>
+                <p className="mt-3 border-t border-line pt-3 font-serif text-ink-soft">{l.summary}</p>
               )}
               <div className="mono mt-3 text-[0.7rem] text-ink-mute">{l.id}</div>
             </li>

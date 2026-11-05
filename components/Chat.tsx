@@ -60,7 +60,7 @@ export function Chat() {
       <div className="scroll-thin min-h-0 flex-1 overflow-y-auto px-6 sm:px-10">
         {!messages.length ? (
           <div className="flex min-h-full flex-col justify-center py-10">
-            <h1 className="text-[clamp(3.2rem,7vw,5.4rem)] leading-[0.85] font-medium tracking-[-2px]">
+            <h1 className="font-display text-[clamp(3.2rem,7vw,5.4rem)] leading-[0.85] font-medium tracking-[-2px]">
               <span className="block">Send</span>
               <span className="-ml-1 block italic">anything.</span>
             </h1>
@@ -102,7 +102,7 @@ export function Chat() {
           </button>
           <input ref={fileRef} type="file" accept="image/*" capture="environment" hidden onChange={(e) => onFile(e.target.files?.[0])} />
           <input
-            className="min-w-0 flex-1 bg-transparent py-2 text-[1.15rem] outline-none placeholder:text-ink-mute placeholder:italic"
+            className="min-w-0 flex-1 bg-transparent py-2 text-[1.15rem] outline-none placeholder:text-ink-mute"
             placeholder="What are you sending?"
             value={text}
             onChange={(e) => setText(e.target.value)}
@@ -246,7 +246,7 @@ export function Wordmark() {
         <path d="M2 10h22" stroke="var(--color-ink)" strokeWidth="1.5" />
         <rect x="10.5" y="5" width="5" height="18" fill="var(--color-label-yellow)" stroke="var(--color-ink)" strokeWidth="1.5" />
       </svg>
-      <span className="text-[1.6rem] leading-none tracking-[-0.8px]">
+      <span className="font-display text-[1.6rem] leading-none tracking-[-0.8px]">
         Nord<span className="italic">Parcel</span>
       </span>
     </div>

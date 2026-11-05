@@ -69,7 +69,7 @@ export function Parcel() {
             {/* shipping label */}
             <div className="ship-label">
               <div className="flex items-start justify-between">
-                <div className="font-serif text-[15px] italic leading-none tracking-tight">NordParcel</div>
+                <div className="font-display text-[15px] italic leading-none tracking-tight">NordParcel</div>
                 <div className="barcode" />
               </div>
               <div className="mt-2 grid grid-cols-[34px_1fr] gap-x-2 gap-y-[1px] text-[11px] leading-tight">

@@ -109,7 +109,7 @@ export default function RoiPanel() {
         </div>
 
         <div className="mt-3 font-serif text-2xl" style={{ letterSpacing: "-0.5px" }}>
-          ≈ <span className="mono tabular-nums">{hours}</span> <span className="italic">agent-hours / month</span>
+          ≈ <span className="mono tabular-nums">{hours}</span> <span>agent-hours / month</span>
         </div>
         <div className="mono mt-1 text-[0.7rem] text-ink-mute">
           {MIN_PER_TICKET} min/ticket · {TICKETS_PER_MONTH.toLocaleString("en-US")} tickets/month (assumed)
