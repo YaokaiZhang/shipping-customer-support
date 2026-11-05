@@ -1,0 +1,352 @@
+[
+  {
+    "id": "T-001",
+    "message": "How much to send a 2 kg box from Helsinki to Tampere?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-002",
+    "message": "Paljonko maksaa 5 kg paketti Ouluun?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-003",
+    "message": "Vad kostar det att skicka 3 kg till Stockholm?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-004",
+    "message": "Price for a 40x30x20 parcel to Berlin, about 6 kg?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-005",
+    "message": "Mitä maksaa lähettää kirje ja pieni paketti Turkuun?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-006",
+    "message": "Cheapest way to get a 1 kg parcel to Oslo?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-007",
+    "message": "Pris för ett paket på 10 kg till Göteborg?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-008",
+    "message": "Need a quote for a bike box, 18 kg, to Copenhagen.",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-009",
+    "message": "Kuinka paljon maksaa 20 kg muuttolaatikko Kuopioon?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-010",
+    "message": "What's the price to ship a small parcel to Tallinn?",
+    "category": "quote request",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-011",
+    "message": "Express or standard for a birthday gift to Lahti?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-012",
+    "message": "Kumpi on parempi, pakettiautomaatti vai kotiinkuljetus?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-013",
+    "message": "Vilken tjänst är snabbast till Vasa?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-014",
+    "message": "Which option has the lowest CO2 for a 4 kg box?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-015",
+    "message": "Do I need tracking included or is it extra?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-016",
+    "message": "Mikä palvelu sopii isolle mutta kevyelle paketille?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-017",
+    "message": "Can a 25 kg parcel go to a pickup point?",
+    "category": "product choice",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-018",
+    "message": "Can I send a phone with the battery inside?",
+    "category": "restricted item",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-019",
+    "message": "Saako hajuvettä lähettää paketissa?",
+    "category": "restricted item",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-020",
+    "message": "Får man skicka nagellack till Finland?",
+    "category": "restricted item",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-021",
+    "message": "Is it OK to ship spare lithium batteries?",
+    "category": "restricted item",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-022",
+    "message": "Can I post fireworks to my cousin?",
+    "category": "restricted item",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-023",
+    "message": "I need to ship my grandfather's hunting rifle to Sweden.",
+    "category": "restricted item",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-024",
+    "message": "Where is my parcel NP4471209FI?",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-025",
+    "message": "Missä lähetykseni on? Seurantakoodi NP3390112FI.",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-026",
+    "message": "Mitt paket har stått still i två dagar, var är det?",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-027",
+    "message": "Tracking says 'arrived at terminal', what does that mean?",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-028",
+    "message": "When will my parcel to Espoo be delivered?",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-029",
+    "message": "Milloin paketti tulee noutopisteeseen?",
+    "category": "tracking",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-030",
+    "message": "Tracking says delivered but nothing is here.",
+    "category": "tracking",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-031",
+    "message": "Paketet visar levererat men grannen har det inte.",
+    "category": "tracking",
+    "resolvableByPolicy": false,
+    "language": "sv"
+  },
+  {
+    "id": "T-032",
+    "message": "Can I change the pickup point for my parcel?",
+    "category": "address change",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-033",
+    "message": "Voinko vaihtaa toimitusosoitteen ennen jakelua?",
+    "category": "address change",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-034",
+    "message": "Please redirect my parcel to my work address.",
+    "category": "address change",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-035",
+    "message": "Jag har flyttat, paketet är redan på väg till fel adress.",
+    "category": "address change",
+    "resolvableByPolicy": false,
+    "language": "sv"
+  },
+  {
+    "id": "T-036",
+    "message": "Sender typed the wrong country, can you fix it?",
+    "category": "address change",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-037",
+    "message": "My vase arrived broken, I want a refund.",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-038",
+    "message": "Paketti katosi, haluan rahat takaisin.",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "fi"
+  },
+  {
+    "id": "T-039",
+    "message": "Express was two days late, I want my money back.",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-040",
+    "message": "Innehållet var skadat, hur gör jag en reklamation?",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "sv"
+  },
+  {
+    "id": "T-041",
+    "message": "I was charged twice for one label.",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-042",
+    "message": "Lasku on väärä, vaadin hyvitystä.",
+    "category": "refund/claim",
+    "resolvableByPolicy": false,
+    "language": "fi"
+  },
+  {
+    "id": "T-043",
+    "message": "We ship 300 parcels a month, do you have business rates?",
+    "category": "business inquiry",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-044",
+    "message": "Verkkokauppamme etsii uutta kuljetuskumppania.",
+    "category": "business inquiry",
+    "resolvableByPolicy": true,
+    "language": "fi"
+  },
+  {
+    "id": "T-045",
+    "message": "Vi skickar pallar till Norge varje vecka, kan vi få avtal?",
+    "category": "business inquiry",
+    "resolvableByPolicy": true,
+    "language": "sv"
+  },
+  {
+    "id": "T-046",
+    "message": "Small Etsy shop, ~40 orders weekly to the EU. Options?",
+    "category": "business inquiry",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-047",
+    "message": "Your pickup point is always closed when I get there.",
+    "category": "complaint",
+    "resolvableByPolicy": true,
+    "language": "en"
+  },
+  {
+    "id": "T-048",
+    "message": "Kuljettaja jätti paketin sateeseen oven eteen.",
+    "category": "complaint",
+    "resolvableByPolicy": false,
+    "language": "fi"
+  },
+  {
+    "id": "T-049",
+    "message": "Customer service never answered my email.",
+    "category": "complaint",
+    "resolvableByPolicy": false,
+    "language": "en"
+  },
+  {
+    "id": "T-050",
+    "message": "Budet var otrevligt och kastade paketet.",
+    "category": "complaint",
+    "resolvableByPolicy": false,
+    "language": "sv"
+  }
+]

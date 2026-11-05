@@ -1,0 +1,7 @@
+[
+  { "keywords": ["lithium", "battery", "batteries", "power bank", "powerbank"], "rule": "allowed_with_product", "productId": "home", "note": "Installed in a device, max 100 Wh, ground transport only. Loose batteries are not accepted." },
+  { "keywords": ["aerosol", "spray", "perfume", "nail polish"], "rule": "needs_declaration", "note": "Limited quantity, domestic ground transport only." },
+  { "keywords": ["firework", "fireworks", "explosive", "ammunition", "gun", "firearm"], "rule": "forbidden", "note": "Not accepted in any NordParcel product." },
+  { "keywords": ["alcohol", "wine", "spirits"], "rule": "needs_declaration", "note": "Domestic only, recipient age check at delivery." },
+  { "keywords": ["cash", "banknotes", "gold"], "rule": "forbidden", "note": "Valuables are not accepted." }
+]
