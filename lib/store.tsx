@@ -2,8 +2,7 @@
 
 import { createContext, useCallback, useContext, useMemo, useReducer, useRef } from "react";
 import { shortId } from "./id";
-import { mockTurn, type TurnInput, type TurnResult } from "./mock/agent";
-import type { GuardEvent, Handoff, Message, Quote, SalesLead, ShipmentProfile } from "./types";
+import type { ChatRequest, GuardEvent, Handoff, Message, Quote, SalesLead, ShipmentProfile, TurnInput, TurnResult } from "./types";
 
 export type Tab = "parcel" | "leads" | "inbox" | "compliance" | "roi";
 
@@ -109,27 +108,57 @@ interface Store extends State {
 
 const Ctx = createContext<Store | null>(null);
 
-const wait = (ms: number) => new Promise((r) => setTimeout(r, ms));
+const blobToDataUrl = async (url: string) => {
+  const blob = await (await fetch(url)).blob();
+  return new Promise<string>((res, rej) => {
+    const r = new FileReader();
+    r.onload = () => res(r.result as string);
+    r.onerror = rej;
+    r.readAsDataURL(blob);
+  });
+};
+
+const failed = (text: string): TurnResult => ({
+  messages: [{ id: shortId("M", 6), role: "assistant", text }],
+  quotes: [],
+  leads: [],
+  handoffs: [],
+  events: [],
+  profile: { from: "Helsinki" },
+});
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [state, dispatch] = useReducer(reducer, initial);
   const ref = useRef(state);
   ref.current = state;
 
-  const run = useCallback(async (input: TurnInput) => {
+  const run = useCallback(async (input: TurnInput, history: Message[]) => {
     const s = ref.current;
     const chatId = s.chatId;
     dispatch({ type: "busy", busy: true });
-    const [result] = await Promise.all([
-      mockTurn({ profile: s.profile, quotes: s.chatQuoteIds.map((id) => s.quotes[id]) }, input),
-      wait(input.kind === "image" ? 1600 : 700 + Math.random() * 500),
-    ]);
+    let result: TurnResult;
+    try {
+      const wire: TurnInput =
+        input.kind === "image" && input.imageUrl.startsWith("blob:") ? { ...input, imageUrl: await blobToDataUrl(input.imageUrl) } : input;
+      const body: ChatRequest = { chatId, history, profile: s.profile, quotes: s.chatQuoteIds.map((id) => s.quotes[id]), input: wire };
+      const res = await fetch("/api/chat", { method: "POST", headers: { "content-type": "application/json" }, body: JSON.stringify(body) });
+      if (!res.ok) throw new Error(String(res.status));
+      result = await res.json();
+      // Photo estimates keep the local preview rather than a round-tripped data URL.
+      if (input.kind === "image")
+        result.messages.forEach((m) =>
+          m.blocks?.forEach((b) => b.type === "estimate" && (b.estimate.imageUrl = input.imageUrl)),
+        );
+    } catch {
+      result = { ...failed("The line dropped. Try that again?"), profile: s.profile };
+    }
     if (ref.current.chatId !== chatId) return; // chat was reset mid-turn
     dispatch({ type: "result", result });
   }, []);
 
   const send = useCallback<Store["send"]>(
     async (input, display) => {
+      const history = ref.current.messages;
       if (input.kind !== "estimate") {
         dispatch({
           type: "user",
@@ -142,7 +171,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
           },
         });
       }
-      await run(input);
+      await run(input, history);
     },
     [run],
   );
@@ -150,7 +179,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const confirmEstimate = useCallback<Store["confirmEstimate"]>(
     (messageId, dims, weightKg, declaredValue) => {
       dispatch({ type: "confirm-estimate", messageId });
-      run({ kind: "estimate", dims, weightKg, declaredValue });
+      run({ kind: "estimate", dims, weightKg, declaredValue }, ref.current.messages);
     },
     [run],
   );

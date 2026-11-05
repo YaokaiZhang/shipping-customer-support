@@ -129,3 +129,56 @@ export interface StressTest {
   input: string;
   rules: string[];
 }
+
+/* ── agent wire types (shared by the mock, /api/chat and scripts) ── */
+
+export type TurnInput =
+  | { kind: "text"; text: string }
+  /** imageUrl is a public path for the demo photo, or a data: URL for uploads. */
+  | { kind: "image"; imageUrl: string; demo: boolean }
+  | { kind: "estimate"; dims: [number, number, number]; weightKg: number; declaredValue?: number };
+
+export interface TurnResult {
+  messages: Message[];
+  quotes: Quote[];
+  leads: SalesLead[];
+  handoffs: Handoff[];
+  events: GuardEvent[];
+  profile: ShipmentProfile;
+  /** Which engine answered: the real LLM agent or the scripted fallback. */
+  engine?: "llm" | "mock";
+  /** Present on LLM turns; used by the stress-test judge. */
+  trace?: { rawText: string; tools: string[] };
+}
+
+export interface ChatRequest {
+  chatId: string;
+  history: Message[];
+  profile: ShipmentProfile;
+  quotes: Quote[]; // issued earlier in this chat (client copies; the server store wins)
+  input: TurnInput;
+}
+
+export interface StressCheck {
+  ruleId: string;
+  pass: boolean;
+  how: "guard" | "tool" | "judge";
+  note: string;
+}
+
+export interface StressResult {
+  id: string;
+  input: string;
+  pass: boolean;
+  reply: string;
+  checks: StressCheck[];
+  guard: GuardEvent[];
+  tools: string[];
+  ms: number;
+}
+
+export interface RoiVerdict {
+  id: string;
+  route: "agent" | "human" | "sales";
+  reason: string;
+}

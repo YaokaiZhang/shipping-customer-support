@@ -3,10 +3,10 @@
  * LLM agent loop will return, so the UI can be swapped over in one place.
  * Prices still come from the real pricing engine; text still goes through the real guard.
  */
-import restricted from "@/data/restricted-items.json";
 import { guardPrices } from "../guard";
 import { shortId } from "../id";
-import { compareOptions, detectPlace, fmtEta, products, standardBox } from "../pricing";
+import { compareOptions, detectPlace, fmtEta, standardBox } from "../pricing";
+import { matchRestriction } from "../restrictions";
 import type {
   Block,
   Chip,
@@ -15,28 +15,17 @@ import type {
   Handoff,
   Message,
   Quote,
-  Restriction,
   SalesLead,
   ShipmentProfile,
+  TurnInput,
+  TurnResult,
 } from "../types";
+
+export type { TurnInput, TurnResult };
 
 export interface TurnContext {
   profile: ShipmentProfile;
   quotes: Quote[]; // issued in this conversation
-}
-
-export type TurnInput =
-  | { kind: "text"; text: string }
-  | { kind: "image"; imageUrl: string; demo: boolean }
-  | { kind: "estimate"; dims: [number, number, number]; weightKg: number; declaredValue?: number };
-
-export interface TurnResult {
-  messages: Message[];
-  quotes: Quote[];
-  leads: SalesLead[];
-  handoffs: Handoff[];
-  events: GuardEvent[];
-  profile: ShipmentProfile;
 }
 
 const ev = (ruleId: string, action: GuardEvent["action"], excerpt: string): GuardEvent => ({
@@ -64,21 +53,6 @@ const RE = {
   item: /\b(vase|lamp|book|books|laptop|shoes|painting|plant|guitar|camera|clothes|cake)\b/i,
 };
 
-function matchRestriction(t: string): Restriction | null {
-  for (const r of restricted) {
-    const k = r.keywords.find((kw) => t.toLowerCase().includes(kw));
-    if (k) {
-      return {
-        item: k,
-        rule: r.rule as Restriction["rule"],
-        productName: "productId" in r ? products.find((p) => p.id === r.productId)?.name : undefined,
-        note: r.note,
-      };
-    }
-  }
-  return null;
-}
-
 function say(text: string, issued: Quote[], extra: Partial<Message> = {}) {
   const g = guardPrices(text, issued);
   const msg: Message = { id: shortId("M", 6), role: "assistant", text: g.text, ...extra };
@@ -90,7 +64,7 @@ const destinationChips: Chip[] = [{ label: "Tampere" }, { label: "Stockholm" }, 
 const photoChips: Chip[] = [{ label: "Use demo photo", action: "demo-photo" }, { label: "Upload photo", action: "upload" }];
 
 export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<TurnResult> {
-  const r: TurnResult = { messages: [], quotes: [], leads: [], handoffs: [], events: [], profile: { ...ctx.profile } };
+  const r: TurnResult = { messages: [], quotes: [], leads: [], handoffs: [], events: [], profile: { ...ctx.profile }, engine: "mock" };
   const issued = () => [...ctx.quotes, ...r.quotes];
   const push = (text: string, extra?: Partial<Message>) => {
     const { msg, events } = say(text, issued(), extra);

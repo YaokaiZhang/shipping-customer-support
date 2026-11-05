@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from "react";
 import ticketsData from "@/data/tickets.json";
+import saved from "@/data/roi-results.json";
+import type { RoiVerdict } from "@/lib/types";
 
 interface Ticket {
   id: string;
@@ -18,15 +20,21 @@ const STEP_MS = 40;
 
 const CATEGORIES = Array.from(new Set(tickets.map((t) => t.category)));
 
-function tally(upTo: number) {
+const ok = (v?: RoiVerdict) => !!v && v.route !== "human";
+
+function tally(upTo: number, verdicts: RoiVerdict[]) {
   const seen = tickets.slice(0, upTo);
-  const resolved = seen.filter((t) => t.resolvableByPolicy).length;
+  const resolved = seen.filter((_, i) => ok(verdicts[i])).length;
   const byCat = CATEGORIES.map((c) => {
-    const rows = seen.filter((t) => t.category === c);
-    return { category: c, total: rows.length, resolved: rows.filter((t) => t.resolvableByPolicy).length };
+    const idx = seen.map((t, i) => (t.category === c ? i : -1)).filter((i) => i >= 0);
+    return { category: c, total: idx.length, resolved: idx.filter((i) => ok(verdicts[i])).length };
   });
-  return { seen: seen.length, resolved, byCat };
+  const agree = seen.filter((t, i) => ok(verdicts[i]) === t.resolvableByPolicy).length;
+  const sales = seen.filter((_, i) => verdicts[i]?.route === "sales").length;
+  return { seen: seen.length, resolved, byCat, agree, sales };
 }
+
+const savedVerdicts = saved.verdicts as RoiVerdict[];
 
 const totals = Object.fromEntries(
   CATEGORIES.map((c) => [c, tickets.filter((t) => t.category === c).length]),
@@ -34,17 +42,31 @@ const totals = Object.fromEntries(
 
 export default function RoiPanel() {
   const [n, setN] = useState(tickets.length);
-  const [running, setRunning] = useState(false);
+  const [verdicts, setVerdicts] = useState<RoiVerdict[]>(savedVerdicts);
+  const [phase, setPhase] = useState<"idle" | "classifying" | "replaying" | "error">("idle");
   const timer = useRef<ReturnType<typeof setInterval> | null>(null);
+  const running = phase === "classifying" || phase === "replaying";
 
   useEffect(() => () => {
     if (timer.current) clearInterval(timer.current);
   }, []);
 
-  const replay = () => {
+  const replay = async () => {
     if (timer.current) clearInterval(timer.current);
-    setRunning(true);
+    setPhase("classifying");
     setN(0);
+    let next: RoiVerdict[];
+    try {
+      const res = await fetch("/api/roi", { method: "POST" });
+      if (!res.ok) throw new Error(String(res.status));
+      next = (await res.json()).verdicts;
+    } catch {
+      setPhase("error");
+      setN(tickets.length);
+      return;
+    }
+    setVerdicts(next);
+    setPhase("replaying");
     let i = 0;
     timer.current = setInterval(() => {
       i += 1;
@@ -52,15 +74,16 @@ export default function RoiPanel() {
       if (i >= tickets.length) {
         if (timer.current) clearInterval(timer.current);
         timer.current = null;
-        setRunning(false);
+        setPhase("idle");
       }
     }, STEP_MS);
   };
 
-  const { seen, resolved, byCat } = tally(n);
+  const { seen, resolved, byCat, agree, sales } = tally(n, verdicts);
   const pct = seen ? Math.round((resolved / seen) * 100) : 0;
   const hours = Math.round(((seen ? resolved / seen : 0) * TICKETS_PER_MONTH * MIN_PER_TICKET) / 60);
-  const current = running && n > 0 ? tickets[n - 1] : null;
+  const current = phase === "replaying" && n > 0 ? tickets[n - 1] : null;
+  const currentV = current ? verdicts[n - 1] : undefined;
 
   return (
     <div className="flex flex-col gap-8 p-6">
@@ -68,7 +91,7 @@ export default function RoiPanel() {
         <div className="flex items-start justify-between gap-4">
           <span className="label">ROI replay</span>
           <button type="button" className="btn" onClick={replay} disabled={running}>
-            {running ? "Replaying…" : `Replay ${tickets.length} tickets`}
+            {phase === "classifying" ? "Classifying…" : phase === "replaying" ? "Replaying…" : `Replay ${tickets.length} tickets`}
           </button>
         </div>
 
@@ -80,7 +103,7 @@ export default function RoiPanel() {
           <div className="pb-2">
             <div className="font-serif text-lg leading-tight">resolved without a human</div>
             <div className="mono text-sm text-ink-soft">
-              {resolved}/{seen} tickets
+              {resolved}/{seen} tickets{sales ? ` · ${sales} as leads` : ""}
             </div>
           </div>
         </div>
@@ -90,17 +113,18 @@ export default function RoiPanel() {
         </div>
         <div className="mono mt-1 text-[0.7rem] text-ink-mute">
           {MIN_PER_TICKET} min/ticket · {TICKETS_PER_MONTH.toLocaleString("en-US")} tickets/month (assumed)
+          {seen === tickets.length && ` · matches hand labels ${agree}/${seen}`}
         </div>
 
         <div className="mono mt-4 h-5 truncate text-xs text-ink-soft">
           {current ? (
             <>
               <span className="text-ink-mute">{current.id}</span>{" "}
-              <span className={current.resolvableByPolicy ? "text-accent-green" : "text-accent-red"}>
-                {current.resolvableByPolicy ? "✓" : "→"}
-              </span>{" "}
+              <span className={ok(currentV) ? "text-accent-green" : "text-accent-red"}>{ok(currentV) ? "✓" : "→"}</span>{" "}
               {current.message}
             </>
+          ) : phase === "error" ? (
+            <span className="text-accent-red">Couldn&apos;t reach the model. Showing the last run.</span>
           ) : null}
         </div>
       </section>

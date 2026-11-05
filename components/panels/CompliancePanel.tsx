@@ -2,9 +2,10 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "@/lib/store";
-import type { GuardAction, Rule, StressTest } from "@/lib/types";
+import type { GuardAction, Rule, StressResult, StressTest } from "@/lib/types";
 import rulesData from "@/data/rules.json";
 import testsData from "@/data/stress-tests.json";
+import saved from "@/data/stress-results.json";
 import { clock } from "./time";
 
 const rules = rulesData as Rule[];
@@ -19,45 +20,65 @@ const ACTION: Record<GuardAction, string> = {
   routed: "routed",
 };
 
-type Status = "pending" | "running" | "pass";
-const STEP_MS = 180;
+type Status = "pending" | "running" | "pass" | "fail" | "error";
+const CONCURRENCY = 4;
 
 const tilt = (i: number) => ({ transform: `rotate(${[-2, 1.5, -1, 2][i % 4]}deg)` });
+
+const savedById = new Map((saved.results as StressResult[]).map((r) => [r.id, r]));
+const statusOf = (r?: StressResult): Status => (!r ? "pending" : r.pass ? "pass" : "fail");
 
 export default function CompliancePanel() {
   const { events } = useStore();
 
-  /* ── stress suite ───────────────────────────── */
-  const [statuses, setStatuses] = useState<Status[]>(() => tests.map(() => "pass"));
+  /* ── stress suite: each test runs through the real agent via /api/stress-test ── */
+  const [results, setResults] = useState<(StressResult | undefined)[]>(() => tests.map((t) => savedById.get(t.id)));
+  const [statuses, setStatuses] = useState<Status[]>(() => tests.map((t) => statusOf(savedById.get(t.id))));
   const [running, setRunning] = useState(false);
-  const [lastRun, setLastRun] = useState(0);
-  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+  const [lastRun, setLastRun] = useState(saved.ranAt);
+  const [open, setOpen] = useState<string | null>(null);
+  const alive = useRef(true);
+  useEffect(() => () => void (alive.current = false), []);
 
-  useEffect(() => {
-    setLastRun(Date.now() - 1000 * 60 * 14);
-    const t = timers.current;
-    return () => t.forEach(clearTimeout);
-  }, []);
-
-  const run = () => {
-    timers.current.forEach(clearTimeout);
+  const run = async () => {
     setRunning(true);
+    setOpen(null);
     setStatuses(tests.map(() => "pending"));
-    tests.forEach((_, i) => {
-      timers.current.push(
-        setTimeout(() => setStatuses((s) => s.map((v, j) => (j === i ? "running" : v))), i * STEP_MS),
-        setTimeout(() => setStatuses((s) => s.map((v, j) => (j === i ? "pass" : v))), i * STEP_MS + STEP_MS * 0.8),
-      );
-    });
-    timers.current.push(
-      setTimeout(() => {
-        setRunning(false);
-        setLastRun(Date.now());
-      }, tests.length * STEP_MS + 60),
+    setResults(tests.map(() => undefined));
+    let next = 0;
+    const set = (i: number, st: Status, r?: StressResult) => {
+      if (!alive.current) return;
+      setStatuses((s) => s.map((v, j) => (j === i ? st : v)));
+      if (r) setResults((s) => s.map((v, j) => (j === i ? r : v)));
+    };
+    await Promise.all(
+      Array.from({ length: CONCURRENCY }, async () => {
+        while (next < tests.length) {
+          const i = next++;
+          set(i, "running");
+          try {
+            const res = await fetch("/api/stress-test", {
+              method: "POST",
+              headers: { "content-type": "application/json" },
+              body: JSON.stringify({ id: tests[i].id }),
+            });
+            if (!res.ok) throw new Error(String(res.status));
+            const r = (await res.json()) as StressResult;
+            set(i, statusOf(r), r);
+          } catch {
+            set(i, "error");
+          }
+        }
+      }),
     );
+    if (!alive.current) return;
+    setRunning(false);
+    setLastRun(Date.now());
   };
 
   const passed = statuses.filter((s) => s === "pass").length;
+  const done = statuses.filter((s) => s !== "pending" && s !== "running").length;
+  const guardHits = results.reduce((n, r) => n + (r?.guard.length ?? 0), 0);
 
   /* ── rule counts ────────────────────────────── */
   const counts = useMemo(() => {
@@ -89,29 +110,45 @@ export default function CompliancePanel() {
         <ol className="mt-2">
           {tests.map((t, i) => {
             const s = statuses[i];
+            const r = results[i];
+            const failedRules = new Set(r?.checks.filter((c) => !c.pass).map((c) => c.ruleId));
+            const isOpen = open === t.id && !!r;
             return (
-              <li
-                key={t.id}
-                className={`flex items-start gap-3 border-b border-line py-2.5 transition-opacity ${
-                  s === "pending" ? "opacity-40" : ""
-                }`}
-              >
-                <span className="mono w-11 shrink-0 pt-0.5 text-[0.7rem] text-ink-mute">{t.id}</span>
-                <span className="flex-1 font-serif italic leading-snug">{t.input}</span>
-                <span className="flex shrink-0 gap-1 pt-0.5">
-                  {t.rules.map((r, k) => (
-                    <span key={r} className="sticker sticker-ink" style={tilt(i + k)}>
-                      {r}
-                    </span>
-                  ))}
-                </span>
-                <span
-                  className={`mono w-16 shrink-0 pt-0.5 text-right text-xs ${
-                    s === "pass" ? "text-accent-green" : "text-ink-mute"
-                  }`}
+              <li key={t.id} className={`border-b border-line transition-opacity ${s === "pending" ? "opacity-40" : ""}`}>
+                <button
+                  type="button"
+                  className="flex w-full items-start gap-3 py-2.5 text-left disabled:cursor-default"
+                  disabled={!r}
+                  onClick={() => setOpen(isOpen ? null : t.id)}
                 >
-                  {s === "pass" ? "✓ pass" : s === "running" ? "running…" : "pending"}
-                </span>
+                  <span className="mono w-11 shrink-0 pt-0.5 text-[0.7rem] text-ink-mute">{t.id}</span>
+                  <span className="flex-1 font-serif italic leading-snug">{t.input}</span>
+                  <span className="flex shrink-0 gap-1 pt-0.5">
+                    {t.rules.map((rid, k) => (
+                      <span key={rid} className={`sticker ${failedRules.has(rid) ? "sticker-red" : "sticker-ink"}`} style={tilt(i + k)}>
+                        {rid}
+                      </span>
+                    ))}
+                  </span>
+                  <span
+                    className={`mono w-16 shrink-0 pt-0.5 text-right text-xs ${
+                      s === "pass" ? "text-accent-green" : s === "fail" || s === "error" ? "text-accent-red" : "text-ink-mute"
+                    }`}
+                  >
+                    {{ pass: "✓ pass", fail: "✗ fail", error: "error", running: "running…", pending: "pending" }[s]}
+                  </span>
+                </button>
+                {isOpen && (
+                  <div className="rise mb-3 ml-14 space-y-1.5 border-l-2 border-ink pl-3">
+                    <p className="font-serif leading-snug text-ink-soft">“{r.reply}”</p>
+                    {r.checks.map((c) => (
+                      <p key={c.ruleId} className="mono text-[0.72rem] leading-snug">
+                        <span className={c.pass ? "text-accent-green" : "text-accent-red"}>{c.pass ? "✓" : "✗"}</span> {c.ruleId}{" "}
+                        <span className="text-ink-mute">{c.how}</span> · {c.note}
+                      </p>
+                    ))}
+                  </div>
+                )}
               </li>
             );
           })}

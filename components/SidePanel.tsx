@@ -88,6 +88,9 @@ function Toasts() {
   const { events, tab, setTab } = useStore();
   const [shown, setShown] = useState<GuardEvent[]>([]);
   const seen = useRef(0);
+  const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
+
+  useEffect(() => () => timers.current.forEach(clearTimeout), []);
 
   useEffect(() => {
     const fresh = events.slice(0, events.length - seen.current);
@@ -95,8 +98,8 @@ function Toasts() {
     if (!fresh.length) return;
     setShown((s) => [...fresh, ...s].slice(0, 3));
     const ids = fresh.map((e) => e.id);
-    const t = setTimeout(() => setShown((s) => s.filter((e) => !ids.includes(e.id))), 4500);
-    return () => clearTimeout(t);
+    // Each batch owns its timer, so a new event never cancels an older toast's dismissal.
+    timers.current.push(setTimeout(() => setShown((s) => s.filter((e) => !ids.includes(e.id))), 4500));
   }, [events]);
 
   if (tab === "compliance" || !shown.length) return null;

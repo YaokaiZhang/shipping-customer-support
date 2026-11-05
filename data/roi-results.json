@@ -1,0 +1,256 @@
+{
+  "ranAt": 1793907930973,
+  "model": "claude-haiku-5-5",
+  "verdicts": [
+    {
+      "id": "T-001",
+      "route": "agent",
+      "reason": "Instant domestic quote from destination and weight"
+    },
+    {
+      "id": "T-002",
+      "route": "agent",
+      "reason": "Instant domestic quote from weight and destination"
+    },
+    {
+      "id": "T-003",
+      "route": "agent",
+      "reason": "Instant quote for Swedish destination and weight"
+    },
+    {
+      "id": "T-004",
+      "route": "agent",
+      "reason": "Instant international quote from dimensions and weight"
+    },
+    {
+      "id": "T-005",
+      "route": "agent",
+      "reason": "Quote for letter and small parcel to Turku"
+    },
+    {
+      "id": "T-006",
+      "route": "agent",
+      "reason": "Compare cheapest options for light parcel to Oslo"
+    },
+    {
+      "id": "T-007",
+      "route": "agent",
+      "reason": "Instant quote for 10 kg parcel to Gothenburg"
+    },
+    {
+      "id": "T-008",
+      "route": "agent",
+      "reason": "Instant quote for 18 kg box to Copenhagen"
+    },
+    {
+      "id": "T-009",
+      "route": "agent",
+      "reason": "Instant quote for 20 kg box to Kuopio"
+    },
+    {
+      "id": "T-010",
+      "route": "agent",
+      "reason": "Price quote for small parcel to Tallinn"
+    },
+    {
+      "id": "T-011",
+      "route": "agent",
+      "reason": "Compare express and standard service options for gift"
+    },
+    {
+      "id": "T-012",
+      "route": "agent",
+      "reason": "Compare parcel locker and home delivery options"
+    },
+    {
+      "id": "T-013",
+      "route": "agent",
+      "reason": "Compare fastest service options to Vaasa"
+    },
+    {
+      "id": "T-014",
+      "route": "agent",
+      "reason": "Compare service CO2 emissions for 4 kg box"
+    },
+    {
+      "id": "T-015",
+      "route": "agent",
+      "reason": "Product policy question about tracking inclusion"
+    },
+    {
+      "id": "T-016",
+      "route": "agent",
+      "reason": "Recommend service for large lightweight parcel"
+    },
+    {
+      "id": "T-017",
+      "route": "agent",
+      "reason": "Policy answer on pickup point weight limits"
+    },
+    {
+      "id": "T-018",
+      "route": "agent",
+      "reason": "Restricted item check for phone with battery"
+    },
+    {
+      "id": "T-019",
+      "route": "agent",
+      "reason": "Restricted item check for perfume shipping"
+    },
+    {
+      "id": "T-020",
+      "route": "agent",
+      "reason": "Restricted item check for nail polish shipping"
+    },
+    {
+      "id": "T-021",
+      "route": "agent",
+      "reason": "Restricted item check for spare lithium batteries"
+    },
+    {
+      "id": "T-022",
+      "route": "agent",
+      "reason": "Restricted item check for fireworks shipping"
+    },
+    {
+      "id": "T-023",
+      "route": "agent",
+      "reason": "Restricted item policy answer for firearm shipping"
+    },
+    {
+      "id": "T-024",
+      "route": "human",
+      "reason": "Needs live shipment lookup the agent cannot access"
+    },
+    {
+      "id": "T-025",
+      "route": "human",
+      "reason": "Needs live shipment lookup the agent cannot access"
+    },
+    {
+      "id": "T-026",
+      "route": "human",
+      "reason": "Stalled parcel needs investigation by staff"
+    },
+    {
+      "id": "T-027",
+      "route": "agent",
+      "reason": "Explain generic tracking status meaning"
+    },
+    {
+      "id": "T-028",
+      "route": "human",
+      "reason": "Specific parcel delivery date needs shipment access"
+    },
+    {
+      "id": "T-029",
+      "route": "agent",
+      "reason": "General pickup point delivery timing explanation"
+    },
+    {
+      "id": "T-030",
+      "route": "human",
+      "reason": "Marked delivered but missing, requires investigation"
+    },
+    {
+      "id": "T-031",
+      "route": "human",
+      "reason": "Delivered to wrong place, requires investigation"
+    },
+    {
+      "id": "T-032",
+      "route": "human",
+      "reason": "Changing pickup point of existing shipment"
+    },
+    {
+      "id": "T-033",
+      "route": "human",
+      "reason": "Address change to existing shipment before delivery"
+    },
+    {
+      "id": "T-034",
+      "route": "human",
+      "reason": "Redirecting existing shipment to new address"
+    },
+    {
+      "id": "T-035",
+      "route": "human",
+      "reason": "Redirect of in-transit shipment to new address"
+    },
+    {
+      "id": "T-036",
+      "route": "human",
+      "reason": "Correcting destination on existing shipment"
+    },
+    {
+      "id": "T-037",
+      "route": "human",
+      "reason": "Refund request for damaged parcel"
+    },
+    {
+      "id": "T-038",
+      "route": "human",
+      "reason": "Lost parcel and refund request"
+    },
+    {
+      "id": "T-039",
+      "route": "human",
+      "reason": "Late delivery refund request needs human review"
+    },
+    {
+      "id": "T-040",
+      "route": "human",
+      "reason": "Damage claim submission needs human handling"
+    },
+    {
+      "id": "T-041",
+      "route": "human",
+      "reason": "Duplicate charge needs account access and refund"
+    },
+    {
+      "id": "T-042",
+      "route": "human",
+      "reason": "Incorrect invoice with refund demand needs review"
+    },
+    {
+      "id": "T-043",
+      "route": "sales",
+      "reason": "Business volume rates enquiry, log as lead"
+    },
+    {
+      "id": "T-044",
+      "route": "sales",
+      "reason": "Business seeking new shipping partner, log lead"
+    },
+    {
+      "id": "T-045",
+      "route": "sales",
+      "reason": "Business pallet shipping agreement enquiry, log lead"
+    },
+    {
+      "id": "T-046",
+      "route": "sales",
+      "reason": "Small business weekly volume enquiry, log lead"
+    },
+    {
+      "id": "T-047",
+      "route": "human",
+      "reason": "Pickup point service complaint needs investigation"
+    },
+    {
+      "id": "T-048",
+      "route": "human",
+      "reason": "Driver left parcel in rain, complaint investigation"
+    },
+    {
+      "id": "T-049",
+      "route": "human",
+      "reason": "Unanswered email complaint needs human follow-up"
+    },
+    {
+      "id": "T-050",
+      "route": "human",
+      "reason": "Driver misconduct complaint needs investigation"
+    }
+  ]
+}
