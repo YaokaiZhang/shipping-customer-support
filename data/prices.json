@@ -1,0 +1,18 @@
+{
+  "currency": "EUR",
+  "zoneDistanceKm": { "FI": 300, "NORDIC": 700, "EU": 1600, "WORLD": 7000 },
+  "bands": {
+    "letter":   [ { "maxKg": 0.5, "FI": 2.9, "NORDIC": 4.9, "EU": 5.9, "WORLD": 7.9 }, { "maxKg": 2, "FI": 5.9, "NORDIC": 8.9, "EU": 10.9, "WORLD": 14.9 } ],
+    "locker":   [ { "maxKg": 2, "FI": 5.9, "NORDIC": 11.9 }, { "maxKg": 5, "FI": 7.9, "NORDIC": 14.9 }, { "maxKg": 10, "FI": 9.9, "NORDIC": 18.9 }, { "maxKg": 25, "FI": 14.9, "NORDIC": 26.9 } ],
+    "home":     [ { "maxKg": 2, "FI": 9.9, "NORDIC": 16.9, "EU": 22.9 }, { "maxKg": 5, "FI": 11.9, "NORDIC": 19.9, "EU": 27.9 }, { "maxKg": 10, "FI": 14.9, "NORDIC": 24.9, "EU": 34.9 }, { "maxKg": 35, "FI": 22.9, "NORDIC": 36.9, "EU": 52.9 } ],
+    "express":  [ { "maxKg": 2, "FI": 17.9, "NORDIC": 29.9, "EU": 44.9, "WORLD": 69.9 }, { "maxKg": 5, "FI": 21.9, "NORDIC": 36.9, "EU": 54.9, "WORLD": 89.9 }, { "maxKg": 10, "FI": 27.9, "NORDIC": 46.9, "EU": 69.9, "WORLD": 119.9 }, { "maxKg": 30, "FI": 39.9, "NORDIC": 64.9, "EU": 99.9, "WORLD": 179.9 } ],
+    "pallet":   [ { "maxKg": 800, "FI": 129, "NORDIC": 219, "EU": 349 } ],
+    "intl-eco": [ { "maxKg": 2, "EU": 14.9, "WORLD": 24.9 }, { "maxKg": 5, "EU": 19.9, "WORLD": 34.9 }, { "maxKg": 10, "EU": 26.9, "WORLD": 49.9 }, { "maxKg": 30, "EU": 44.9, "WORLD": 89.9 } ]
+  },
+  "addOns": {
+    "insurance": { "name": "Insurance", "percentOfValue": 1.5, "minFee": 3.5 },
+    "fragile":   { "name": "Fragile handling", "fee": 4.0 },
+    "signature": { "name": "Signature on delivery", "fee": 2.5 },
+    "sms":       { "name": "SMS tracking", "fee": 0.9 }
+  }
+}

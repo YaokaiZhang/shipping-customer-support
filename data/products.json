@@ -1,0 +1,129 @@
+[
+  {
+    "id": "letter",
+    "name": "Letter+",
+    "maxWeightKg": 2,
+    "maxDimsCm": [
+      35,
+      25,
+      3
+    ],
+    "zones": [
+      "FI",
+      "NORDIC",
+      "EU",
+      "WORLD"
+    ],
+    "speedDays": [
+      2,
+      4
+    ],
+    "co2PerKgKm": 9e-05,
+    "description": "Flat items and documents, delivered to the mailbox."
+  },
+  {
+    "id": "locker",
+    "name": "Parcel Locker",
+    "maxWeightKg": 25,
+    "maxDimsCm": [
+      60,
+      40,
+      40
+    ],
+    "zones": [
+      "FI",
+      "NORDIC"
+    ],
+    "speedDays": [
+      1,
+      3
+    ],
+    "co2PerKgKm": 0.0001,
+    "description": "Pick up from a 24/7 locker near the recipient."
+  },
+  {
+    "id": "home",
+    "name": "Home Delivery",
+    "maxWeightKg": 35,
+    "maxDimsCm": [
+      120,
+      60,
+      60
+    ],
+    "zones": [
+      "FI",
+      "NORDIC",
+      "EU"
+    ],
+    "speedDays": [
+      1,
+      3
+    ],
+    "co2PerKgKm": 7e-05,
+    "description": "Delivered to the door by electric van."
+  },
+  {
+    "id": "express",
+    "name": "Express Next-Day",
+    "maxWeightKg": 30,
+    "maxDimsCm": [
+      100,
+      60,
+      60
+    ],
+    "zones": [
+      "FI",
+      "NORDIC",
+      "EU",
+      "WORLD"
+    ],
+    "speedDays": [
+      1,
+      1
+    ],
+    "co2PerKgKm": 0.00062,
+    "description": "Fastest option, by air where needed."
+  },
+  {
+    "id": "pallet",
+    "name": "Pallet Freight",
+    "maxWeightKg": 800,
+    "maxDimsCm": [
+      240,
+      120,
+      180
+    ],
+    "zones": [
+      "FI",
+      "NORDIC",
+      "EU"
+    ],
+    "speedDays": [
+      2,
+      5
+    ],
+    "co2PerKgKm": 6e-05,
+    "description": "For business shipments on a EUR pallet.",
+    "minWeightKg": 50
+  },
+  {
+    "id": "intl-eco",
+    "name": "International Economy",
+    "maxWeightKg": 30,
+    "maxDimsCm": [
+      100,
+      60,
+      60
+    ],
+    "zones": [
+      "EU",
+      "WORLD"
+    ],
+    "speedDays": [
+      5,
+      10
+    ],
+    "co2PerKgKm": 8e-05,
+    "description": "Road and sea, slower and lower emission."
+  }
+]
