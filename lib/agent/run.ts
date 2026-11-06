@@ -58,9 +58,13 @@ export async function runTurn(req: ChatRequest): Promise<TurnResult> {
   // Photo → vision estimate. The customer confirms or edits it before anything is quoted.
   if (req.input.kind === "image") {
     const estimate = await estimateDimensions(req.input.imageUrl);
-    const text = estimate.referenceObjectFound
-      ? `Measured against the ${estimate.referenceObjectFound}. Check the numbers, then I'll quote.`
-      : "I couldn't find a reference object, so these are rough. Please check them.";
+    const size = estimate.referenceObjectFound
+      ? `Measured against the ${estimate.referenceObjectFound}.`
+      : "I couldn't find a reference object, so the size is rough.";
+    const weight = req.profile.weightKg
+      ? `I kept the ${req.profile.weightKg} kg you gave me.`
+      : "The weight is only a guess from the photo, so please put in the real one.";
+    const text = `${size} ${weight} Check the numbers, then I'll quote.`;
     s.result.messages.push({ id: shortId("M", 6), role: "assistant", text, blocks: [{ type: "estimate", estimate }] });
     return s.result;
   }

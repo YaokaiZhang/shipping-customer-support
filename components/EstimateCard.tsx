@@ -14,12 +14,15 @@ export function EstimateCard({
   estimate: DimensionEstimate;
   confirmed?: boolean;
 }) {
-  const { confirmEstimate, busy } = useStore();
+  const { confirmEstimate, busy, profile } = useStore();
+  // A photo can't weigh anything: the vision weight is only a guess. If the customer already
+  // told us the weight, start from their number so a guess never silently replaces it.
+  const [statedKg] = useState(profile.weightKg);
   const [v, setV] = useState({
     l: estimate.lengthCm,
     w: estimate.widthCm,
     h: estimate.heightCm,
-    kg: estimate.estWeightKg,
+    kg: statedKg ?? estimate.estWeightKg,
     value: "" as string,
   });
   const box = standardBox([v.l, v.w, v.h]);
@@ -67,7 +70,9 @@ export function EstimateCard({
         </div>
         <div className="mt-2 grid grid-cols-[1fr_auto_1fr_auto] items-end gap-1.5">
           {num("kg")}
-          <span className="mono pb-1 text-xs text-ink-mute">kg</span>
+          <span className="mono pb-1 text-xs text-ink-mute">
+            kg {statedKg !== undefined ? "(yours)" : "(guess)"}
+          </span>
           <input
             className="field text-center"
             placeholder="value"
