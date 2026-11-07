@@ -125,23 +125,20 @@ export function LabelCard({ booking: b }: { booking: Booking }) {
         <div className="mono mt-1 text-center text-[1.05rem] font-bold tracking-[0.25em]">{b.trackingNumber}</div>
       </div>
 
-      <div className="card mx-auto flex max-w-[440px] flex-col gap-3 p-3">
-        <div className="flex items-start gap-3">
-          <span className="sticker sticker-green mt-0.5 -rotate-2">LABEL READY</span>
-          <p className="mono text-[0.8rem] leading-snug text-ink-soft">{b.instructions}</p>
-        </div>
-        <div className="flex flex-wrap justify-end gap-2">
-          <button className="btn btn-ghost !px-3 !py-1 !text-[0.95rem]" disabled={busy} onClick={() => send({ kind: "text", text: `Track ${b.trackingNumber}` })}>
-            Track it
-          </button>
-          <button className="btn !px-3 !py-1 !text-[0.95rem]" onClick={() => printLabel(b)}>
-            Print label
-          </button>
-        </div>
-        <div className="mono flex justify-between text-[0.72rem] text-ink-mute">
-          <span>{b.id}</span>
-          <span>from {b.quoteId}</span>
-        </div>
+      <div className="mx-auto flex max-w-[440px] items-center gap-2 pt-1">
+        <span className="mono mr-auto truncate text-[0.68rem] text-ink-mute" title={`${b.instructions}\nfrom ${b.quoteId}`}>
+          {b.id}
+        </span>
+        <button
+          className="mono px-2 text-[0.8rem] text-ink-soft hover:text-ink hover:underline disabled:opacity-40"
+          disabled={busy}
+          onClick={() => send({ kind: "text", text: `Track ${b.trackingNumber}` })}
+        >
+          Track it
+        </button>
+        <button className="btn !px-3 !py-1 !text-[0.92rem]" onClick={() => printLabel(b)}>
+          Print label
+        </button>
       </div>
     </div>
   );

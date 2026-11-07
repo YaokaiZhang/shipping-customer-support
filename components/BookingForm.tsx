@@ -54,55 +54,53 @@ export function BookingForm({
   };
 
   const field = (k: keyof typeof v, label: string, opts: { type?: string; className?: string; placeholder?: string } = {}) => (
-    <label className={`block min-w-0 ${opts.className ?? ""}`}>
-      <span className={`label ${tried && errors[k] ? "text-accent-red" : "text-ink-mute"}`}>{label}</span>
-      <input
-        className={`field ${tried && errors[k] ? "!border-accent-red" : ""}`}
-        type={opts.type ?? "text"}
-        placeholder={opts.placeholder}
-        value={v[k]}
-        onChange={(e) => setV({ ...v, [k]: e.target.value })}
-      />
-    </label>
+    <input
+      aria-label={label}
+      aria-invalid={tried && !!errors[k]}
+      className={`field min-w-0 !text-[0.95rem] placeholder:text-ink-mute ${tried && errors[k] ? "!border-accent-red placeholder:!text-accent-red" : ""} ${opts.className ?? ""}`}
+      type={opts.type ?? "text"}
+      placeholder={opts.placeholder ?? label}
+      value={v[k]}
+      onChange={(e) => setV({ ...v, [k]: e.target.value })}
+    />
   );
+
+  const row = "grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-[1.3fr_1.3fr_0.8fr_1fr]";
+  const legend = "mono pt-1 text-[0.72rem] text-ink-mute";
 
   return (
     <form
-      className="rise space-y-4 border-t border-dashed border-line pt-4"
+      className="rise grid grid-cols-1 gap-x-3 gap-y-2 border-t border-line pt-3 sm:grid-cols-[2.5rem_1fr]"
       onSubmit={(e) => {
         e.preventDefault();
         submit();
       }}
     >
-      <fieldset className="space-y-2">
-        <legend className="mono mb-1 text-[0.8rem] text-ink-soft">FROM</legend>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
-          {field("senderName", "Name", { className: "col-span-2" })}
-          {field("senderStreet", "Street (opt.)", { className: "col-span-2" })}
-          {field("senderPostcode", "Postcode (opt.)")}
-          {field("senderCity", "City", { className: "sm:col-span-3" })}
-        </div>
+      <span className={legend}>from</span>
+      <fieldset className={row} aria-label="From">
+        {field("senderName", "Your name")}
+        {field("senderStreet", "Street (optional)", { placeholder: "Street" })}
+        {field("senderPostcode", "Postcode (optional)", { placeholder: "Postcode" })}
+        {field("senderCity", "City")}
       </fieldset>
-      <fieldset className="space-y-2">
-        <legend className="mono mb-1 text-[0.8rem] text-ink-soft">TO</legend>
-        <div className="grid grid-cols-2 gap-x-3 gap-y-2 sm:grid-cols-4">
-          {field("name", "Recipient", { className: "col-span-2" })}
-          {field("street", "Street", { className: "col-span-2" })}
-          {field("postcode", "Postcode", { placeholder: "00100" })}
-          {field("city", "City", { className: "sm:col-span-3" })}
-          {field("email", "Email for tracking (opt.)", { type: "email", className: "col-span-2 sm:col-span-4" })}
-        </div>
+      <span className={`${legend} sm:pt-2`}>to</span>
+      <fieldset className={`${row} sm:pt-1`} aria-label="To">
+        {field("name", "Recipient")}
+        {field("street", "Street")}
+        {field("postcode", "Postcode")}
+        {field("city", "City")}
+        {field("email", "Email for tracking (optional)", { type: "email", className: "col-span-2 sm:col-span-4" })}
       </fieldset>
-      {tried && !ok && (
-        <p className="mono text-[0.8rem] text-accent-red">Missing or invalid: {Object.values(errors).join(", ")}.</p>
-      )}
-      <div className="flex flex-wrap items-center justify-end gap-2">
+      <div className="flex flex-wrap items-center justify-end gap-2 pt-2 sm:col-span-2">
+        {tried && !ok && (
+          <p className="mono mr-auto text-[0.75rem] text-accent-red">Check: {Object.values(errors).join(", ")}</p>
+        )}
         {onCancel && (
-          <button type="button" className="btn btn-ghost !px-4 !py-1.5" onClick={onCancel}>
+          <button type="button" className="mono px-2 text-[0.8rem] text-ink-soft hover:text-ink hover:underline" onClick={onCancel}>
             Cancel
           </button>
         )}
-        <button type="submit" className="btn !px-4 !py-1.5" disabled={busy}>
+        <button type="submit" className="btn !px-4 !py-1.5 !text-[0.98rem]" disabled={busy}>
           Book &amp; create label
         </button>
       </div>
@@ -117,13 +115,12 @@ export function BookingFormCard({ quoteId }: { quoteId: string }) {
   const booking = bookings.find((b) => b.quoteId === quoteId);
   if (!q) return null;
   return (
-    <div className="card rise p-4">
+    <div className="card rise space-y-3 p-4">
       <div className="flex items-baseline justify-between gap-3">
-        <div>
-          <div className="label text-ink-mute">Book {q.id}</div>
-          <div className="text-xl leading-tight">{q.productName}</div>
+        <div className="text-[1.15rem] leading-tight">
+          Book {q.productName} <span className="mono text-[0.7rem] text-ink-mute">{q.id}</span>
         </div>
-        {booking && <span className="sticker sticker-green -rotate-2">BOOKED · {booking.trackingNumber}</span>}
+        {booking && <span className="sticker sticker-green -rotate-2" title={booking.trackingNumber}>BOOKED</span>}
       </div>
       {!booking && <BookingForm quote={q} />}
     </div>

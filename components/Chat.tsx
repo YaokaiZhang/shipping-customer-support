@@ -137,9 +137,10 @@ function MessageView({ m, chipsActive, onChip }: { m: Message; chipsActive: bool
   return (
     <div className="rise space-y-3">
       {m.from === "human" && (
-        <span className="sticker sticker-blue -rotate-1" title="Written by a person from the support team">
-          Human agent · {m.author ?? "NordParcel"}
-        </span>
+        <div className="mono flex items-center gap-1.5 text-[0.72rem] text-accent-blue" title="Written by a person from the support team">
+          <span className="h-1.5 w-1.5 rounded-full bg-accent-blue" aria-hidden />
+          {m.author ?? "NordParcel"} · support team
+        </div>
       )}
       {m.text && (
         <p className="max-w-[60ch] text-[1.28rem] leading-[1.25] tracking-[-0.3px] text-ink-soft">
@@ -232,10 +233,14 @@ function BlockView({ b, messageId }: { b: Block; messageId: string }) {
     case "handoff": {
       const h = handoffs.find((x) => x.id === b.handoffId);
       return (
-        <button className="card flex w-full items-center gap-3 p-3 text-left transition hover:border-ink" onClick={() => setTab("inbox")}>
-          <span className="sticker sticker-red -rotate-2">HUMAN</span>
-          <span className="flex-1 truncate text-lg">{h?.intent}</span>
-          <span className="mono text-xs">{b.handoffId} →</span>
+        <button
+          className="flex w-full items-center gap-2.5 rounded-md border border-dashed border-line px-3 py-2 text-left transition hover:border-ink"
+          onClick={() => setTab("inbox")}
+          title={`Handed to a person · ${b.handoffId}`}
+        >
+          <span className="mono text-[0.72rem] text-ink-mute">to a human</span>
+          <span className="min-w-0 flex-1 truncate">{h?.intent}</span>
+          <span className="mono text-[0.7rem] text-ink-mute">{b.handoffId} →</span>
         </button>
       );
     }

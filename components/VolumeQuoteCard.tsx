@@ -11,62 +11,55 @@ export function VolumeQuoteCard({ v }: { v: VolumeQuote }) {
   const { setTab } = useStore();
   return (
     <div className="card relative p-4 sm:p-5">
-      <span className="sticker sticker-ink absolute -top-2.5 right-3 rotate-2">LIST PRICES</span>
-      <div className="label text-ink-mute">Indicative monthly estimate</div>
-      <div className="mt-1 text-xl leading-tight">
-        ~{v.parcelsPerMonth} parcels / month · {v.avgWeightKg} kg avg
+      <span className="sticker sticker-ink absolute -top-2.5 right-3 rotate-2" title="Standard list prices, no discount. Sales prepares contract pricing.">
+        LIST PRICES
+      </span>
+      <div className="text-[1.15rem] leading-tight">
+        ~{v.parcelsPerMonth} parcels / month <span className="text-ink-mute">·</span> {v.avgWeightKg} kg avg
+      </div>
+      <div className="mt-2 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="mono text-[1.6rem] leading-none font-bold tracking-tight">{fmtPrice(v.monthlyListTotal)}</span>
+        <span className="mono text-[0.78rem] text-ink-soft">
+          / month · {fmtPrice(v.avgPerParcel)} avg · {v.co2KgPerMonth.toFixed(1)} kg CO₂
+        </span>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-baseline gap-x-4 gap-y-1">
-        <span className="mono text-[1.7rem] leading-none font-bold tracking-tight">{fmtPrice(v.monthlyListTotal)}</span>
-        <span className="mono text-[0.82rem] text-ink-soft">/ month at list · avg {fmtPrice(v.avgPerParcel)} per parcel</span>
-      </div>
-
-      <div className="mt-4 border-t border-dashed border-line pt-3">
-        <div className="mono hidden grid-cols-[1fr_auto_auto_auto] gap-x-4 pb-1 text-[0.7rem] text-ink-mute uppercase sm:grid">
-          <span>Lane · product</span>
-          <span className="text-right">parcels</span>
-          <span className="text-right">list / parcel</span>
-          <span className="text-right">month</span>
-        </div>
-        <ul className="space-y-2">
+      <table className="mono mt-4 w-full border-t border-line text-[0.82rem]">
+        <thead className="sr-only">
+          <tr>
+            <th>Lane</th>
+            <th>Parcels × list price</th>
+            <th>Month</th>
+          </tr>
+        </thead>
+        <tbody>
           {v.lanes.map((l) => (
-            <li key={`${l.zone}-${l.label}`} className="grid grid-cols-[1fr_auto] gap-x-4 sm:grid-cols-[1fr_auto_auto_auto]">
-              <div className="min-w-0">
-                <div className="leading-tight">
-                  FI → {l.label} <span className="mono text-[0.78rem] text-ink-mute">{pct(l.share)}</span>
+            <tr key={`${l.zone}-${l.label}`} className="border-b border-line last:border-0">
+              <td className="w-full py-2 pr-3 align-top">
+                <div className="font-serif text-[1rem] leading-tight">
+                  {l.label} <span className="mono text-[0.72rem] text-ink-mute">{pct(l.share)}</span>
                 </div>
-                <div className="mono text-[0.78rem] text-ink-soft">
-                  {l.productName} · est. {fmtEta(l.etaDays)} · {l.co2KgPerMonth.toFixed(1)} kg CO₂
+                <div
+                  className="text-[0.72rem] text-ink-mute"
+                  title={`est. ${fmtEta(l.etaDays)} · ${l.co2KgPerMonth.toFixed(1)} kg CO₂ / month`}
+                >
+                  {l.productName}
                 </div>
-              </div>
-              <span className="mono hidden text-right text-[0.88rem] sm:block">{l.parcelsPerMonth}</span>
-              <span className="mono hidden text-right text-[0.88rem] sm:block">{fmtPrice(l.listPricePerParcel)}</span>
-              <span className="mono text-right text-[0.88rem]">
-                {fmtPrice(l.monthlyList)}
-                <span className="block text-[0.72rem] text-ink-mute sm:hidden">
-                  {l.parcelsPerMonth} × {fmtPrice(l.listPricePerParcel)}
-                </span>
-              </span>
-            </li>
+              </td>
+              <td className="py-2 pr-4 text-right align-top whitespace-nowrap text-ink-soft">
+                {l.parcelsPerMonth} × {fmtPrice(l.listPricePerParcel)}
+              </td>
+              <td className="py-2 text-right align-top whitespace-nowrap">{fmtPrice(l.monthlyList)}</td>
+            </tr>
           ))}
-        </ul>
-      </div>
+        </tbody>
+      </table>
 
-      <dl className="mono mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 border-t border-dashed border-line pt-3 text-[0.82rem]">
-        <dt className="text-ink-mute">CO₂</dt>
-        <dd>{v.co2KgPerMonth.toFixed(1)} kg / month</dd>
-      </dl>
-
-      <p className="mt-3 rounded-md bg-label-yellow/60 px-3 py-2 text-[0.95rem] leading-snug">
-        These are standard list prices with no discount applied. Our sales team prepares your contract pricing.
-      </p>
-
-      <div className="mono mt-3 flex items-center justify-between text-[0.72rem] text-ink-mute">
+      <div className="mono mt-2 flex items-center justify-between gap-3 text-[0.68rem] text-ink-mute">
         <span>{v.id}</span>
         {v.leadId && (
           <button type="button" className="underline-offset-2 hover:text-ink hover:underline" onClick={() => setTab("leads")}>
-            sales lead {v.leadId} →
+            lead {v.leadId} →
           </button>
         )}
       </div>
@@ -100,7 +93,6 @@ export function VolumeSummary({ v }: { v: VolumeQuote }) {
         </span>
         <span>{v.id}</span>
       </div>
-      <div className="mono mt-1 text-[0.7rem] text-ink-mute">No discount shown in chat; contract pricing is yours to set.</div>
     </div>
   );
 }

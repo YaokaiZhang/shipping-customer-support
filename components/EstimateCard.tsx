@@ -49,18 +49,19 @@ export function EstimateCard({
   );
 
   return (
-    <div className="card grid grid-cols-[132px_1fr] gap-4 p-3">
+    <div className="card grid grid-cols-[84px_1fr] gap-3 p-3 sm:grid-cols-[132px_1fr] sm:gap-4">
       {/* eslint-disable-next-line @next/next/no-img-element */}
       <img src={estimate.imageUrl} alt="" className="h-full max-h-40 w-full rounded-[5px] object-cover" />
       <div className="flex min-w-0 flex-col">
-        <div className="flex items-center gap-2">
+        <div className="flex min-w-0 flex-wrap items-center gap-x-2 gap-y-1">
           {estimate.referenceObjectFound ? (
-            <span className="sticker sticker-ink -rotate-2">{estimate.referenceObjectFound}</span>
+            <span className="sticker sticker-ink shrink-0 -rotate-2 whitespace-nowrap">{estimate.referenceObjectFound}</span>
           ) : (
-            <span className="sticker sticker-red -rotate-2">no reference</span>
+            <span className="sticker sticker-red shrink-0 -rotate-2 whitespace-nowrap">no reference</span>
           )}
-          <div className="ml-auto flex items-center gap-2">
-            <div className="h-1.5 w-16 overflow-hidden rounded-full bg-paper-lo">
+          <DetectedItem estimate={estimate} />
+          <div className="ml-auto flex shrink-0 items-center gap-2" title="Measurement confidence">
+            <div className="h-1.5 w-10 overflow-hidden sm:w-16 rounded-full bg-paper-lo">
               <div className={`h-full ${low ? "bg-accent-orange" : "bg-ink"}`} style={{ width: `${pct}%` }} />
             </div>
             <span className="mono text-xs text-ink-soft">{pct}%</span>
@@ -92,7 +93,7 @@ export function EstimateCard({
         </div>
 
         <div className="mt-auto flex items-center justify-between gap-3 pt-3">
-          <span className="mono text-xs text-ink-soft">▢ {box.join("×")}</span>
+          <span className="mono text-xs text-ink-soft" title="Box size we quote">▢ {box.join("×")} cm</span>
           <button
             className="btn !px-4 !py-1.5"
             disabled={confirmed || busy || forbidden}
@@ -111,9 +112,8 @@ export function EstimateCard({
         </div>
       </div>
 
-      {(estimate.itemLabel || estimate.restriction || pick) && (
-        <div className="col-span-2 space-y-2 border-t border-dashed border-line pt-3">
-          <DetectedItem estimate={estimate} />
+      {(estimate.restriction || (pick && !forbidden)) && (
+        <div className="col-span-2 space-y-2.5 border-t border-line pt-3">
           {estimate.restriction && <RestrictionNote r={estimate.restriction} />}
           {pick && !forbidden && <PackagingOffer pick={pick} on={wantPkg} disabled={confirmed} onChange={setWantPkg} />}
         </div>

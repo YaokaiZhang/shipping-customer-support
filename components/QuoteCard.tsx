@@ -21,7 +21,10 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
   const booked = !!booking;
   const expired = Date.now() > quote.validUntil;
   const [open, setOpen] = useState(false);
-  const total = quote.price + quote.addOns.reduce((s, a) => s + (on[a.id] ? a.price : 0), 0);
+  const [showAddOns, setShowAddOns] = useState(false);
+  const picked = quote.addOns.filter((a) => on[a.id]);
+  const addOnTotal = picked.reduce((s, a) => s + a.price, 0);
+  const total = quote.price + addOnTotal;
 
   return (
     <div
@@ -32,48 +35,62 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
       {highlight && (
         <span className="sticker sticker-red absolute -top-2.5 right-3 rotate-3">BEST VALUE</span>
       )}
-      <div className="label text-ink-mute">{quote.tags.map((t) => TAG_LABEL[t]).join(" · ")}</div>
-      <div className="mt-1 text-xl leading-tight">{quote.productName}</div>
+      <div className="label text-ink-mute">{quote.tags.map((t) => TAG_LABEL[t]).join(" · ") || "\u00a0"}</div>
+      <div className="mt-1 text-[1.15rem] leading-tight">{quote.productName}</div>
 
-      <div className="mono mt-3 text-[1.7rem] font-bold leading-none tracking-tight">{fmtPrice(total)}</div>
-
-      <dl className="mono mt-3 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-[0.82rem]">
-        <dt className="text-ink-mute">est.</dt>
-        <dd>{fmtEta(quote.etaDays)}</dd>
-        <dt className="text-ink-mute">CO₂</dt>
-        <dd>{quote.co2Kg.toFixed(2)} kg</dd>
-      </dl>
-
-      <div className="mt-3 space-y-1 border-t border-dashed border-line pt-3">
-        {quote.addOns.map((a) => (
-          <label key={a.id} className="flex cursor-pointer items-center gap-2 text-[0.92rem] leading-tight">
-            <input
-              type="checkbox"
-              className="accent-ink"
-              checked={!!on[a.id]}
-              disabled={booked}
-              onChange={(e) => setOn({ ...on, [a.id]: e.target.checked })}
-            />
-            <span className="flex-1">
-              {a.name}
-              {a.suggested && <span className="ml-1 text-accent-orange">•</span>}
-            </span>
-            <span className="mono text-[0.78rem] text-ink-soft">+{a.price.toFixed(2)}</span>
-          </label>
-        ))}
+      <div className="mono mt-3 text-[1.6rem] font-bold leading-none tracking-tight">{fmtPrice(total)}</div>
+      <div className="mono mt-1.5 text-[0.78rem] text-ink-soft">
+        {fmtEta(quote.etaDays)} · {quote.co2Kg.toFixed(2)} kg CO₂
       </div>
 
-      <div className="mt-auto pt-4">
+      {quote.addOns.length > 0 && (
+        <div className="mt-3 border-t border-line pt-2">
+          <button
+            type="button"
+            className={`mono flex w-full items-center justify-between gap-2 py-0.5 ${open && !booked ? "max-w-sm" : ""} text-left text-[0.78rem] text-ink-soft hover:text-ink`}
+            aria-expanded={showAddOns}
+            onClick={() => setShowAddOns(!showAddOns)}
+          >
+            <span>
+              add-ons{picked.length ? ` (${picked.length})` : ""} <span aria-hidden>{showAddOns ? "▴" : "▾"}</span>
+            </span>
+            {addOnTotal > 0 && <span>+{fmtPrice(addOnTotal)}</span>}
+          </button>
+          {showAddOns && (
+            <div className="mt-1.5 max-w-sm space-y-1">
+              {quote.addOns.map((a) => (
+                <label
+                  key={a.id}
+                  className="flex cursor-pointer items-center gap-2 text-[0.88rem] leading-tight"
+                  title={a.suggested ? "Suggested for this parcel" : undefined}
+                >
+                  <input
+                    type="checkbox"
+                    className="accent-ink"
+                    checked={!!on[a.id]}
+                    disabled={booked}
+                    onChange={(e) => setOn({ ...on, [a.id]: e.target.checked })}
+                  />
+                  <span className="min-w-0 flex-1 truncate">{a.name}</span>
+                  <span className="mono text-[0.72rem] text-ink-mute">+{a.price.toFixed(2)}</span>
+                </label>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      <div className="mt-auto pt-3">
         {open && !booked ? (
           <BookingForm
             quote={quote}
-            addOns={quote.addOns.filter((a) => on[a.id]).map((a) => a.id)}
+            addOns={picked.map((a) => a.id)}
             onCancel={() => setOpen(false)}
             onSent={() => setOpen(false)}
           />
         ) : (
           <button
-            className={`btn w-full justify-center ${booked ? "btn-ghost" : ""}`}
+            className={`btn w-full justify-center !py-1.5 ${booked ? "btn-ghost" : ""}`}
             onClick={() => setOpen(true)}
             disabled={booked || expired}
             title={booking ? booking.trackingNumber : undefined}
@@ -81,9 +98,8 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
             {booked ? "Booked ✓" : expired ? "Quote expired" : "Book this"}
           </button>
         )}
-        <div className="mono mt-2 flex justify-between text-[0.72rem] text-ink-mute">
-          <span>{quote.id}</span>
-          <span>valid {hoursLeft(quote)}h</span>
+        <div className="mono mt-2 text-right text-[0.68rem] text-ink-mute" title={`Valid ${hoursLeft(quote)}h`}>
+          {quote.id}
         </div>
       </div>
     </div>
