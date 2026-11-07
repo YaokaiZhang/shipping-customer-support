@@ -20,15 +20,20 @@ const PLACES: [RegExp, Zone, string][] = [
 ];
 
 export function detectPlace(text: string): { name: string; zone: Zone } | null {
+  // Collect every place mention, then prefer the destination ("to X", "→ X") over the origin ("from X").
+  const hits: { raw: string; zone: Zone; at: number; score: number }[] = [];
   for (const [re, zone] of PLACES) {
-    const m = text.match(re);
-    if (m) {
-      const raw = m[0];
-      const name = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
-      return { name: name.replace(/aan$/, "").replace(/^Tukholma$/, "Stockholm"), zone };
+    for (const m of text.matchAll(new RegExp(re.source, "gi"))) {
+      const before = text.slice(Math.max(0, m.index - 8), m.index).toLowerCase();
+      const score = /(\bto|→|->|till)\s*$/.test(before) ? 2 : /\bfrom\s*$/.test(before) ? 0 : 1;
+      hits.push({ raw: m[0], zone, at: m.index, score });
     }
   }
-  return null;
+  if (!hits.length) return null;
+  hits.sort((a, b) => b.score - a.score || a.at - b.at);
+  const { raw, zone } = hits[0];
+  const name = raw.charAt(0).toUpperCase() + raw.slice(1).toLowerCase();
+  return { name: name.replace(/aan$/, "").replace(/^Tukholma$/, "Stockholm"), zone };
 }
 
 function fits(p: Product, profile: ShipmentProfile) {
