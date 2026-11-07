@@ -86,17 +86,17 @@ export default function RoiPanel() {
   const currentV = current ? verdicts[n - 1] : undefined;
 
   return (
-    <div className="flex flex-col gap-8 p-6">
-      <section className="border-b border-line pb-5">
+    <div className="flex flex-col gap-6 px-4 py-5 sm:p-6">
+      <section className="border-b border-line pb-3">
         <div className="flex items-start justify-between gap-4">
           <span className="label">ROI replay</span>
-          <button type="button" className="btn" onClick={replay} disabled={running}>
+          <button type="button" className="btn px-4 py-1.5 text-base" onClick={replay} disabled={running}>
             {phase === "classifying" ? "Classifying…" : phase === "replaying" ? "Replaying…" : `Replay ${tickets.length} tickets`}
           </button>
         </div>
 
         <div className="mt-2 flex items-end gap-5">
-          <div className="font-serif leading-none tabular-nums" style={{ fontSize: "5rem", letterSpacing: "-2px" }}>
+          <div className="font-serif leading-none tabular-nums" style={{ fontSize: "4rem", letterSpacing: "-2px" }}>
             {pct}
             <span className="italic">%</span>
           </div>
@@ -108,12 +108,12 @@ export default function RoiPanel() {
           </div>
         </div>
 
-        <div className="mt-3 font-serif text-2xl" style={{ letterSpacing: "-0.5px" }}>
+        <div className="mt-3 font-serif text-xl" style={{ letterSpacing: "-0.3px" }}>
           ≈ <span className="mono tabular-nums">{hours}</span> <span>agent-hours / month</span>
         </div>
         <div className="mono mt-1 text-[0.7rem] text-ink-mute">
-          {MIN_PER_TICKET} min/ticket · {TICKETS_PER_MONTH.toLocaleString("en-US")} tickets/month (assumed)
-          {seen === tickets.length && ` · matches hand labels ${agree}/${seen}`}
+          assumes {MIN_PER_TICKET} min × {TICKETS_PER_MONTH.toLocaleString("en-US")} tickets/mo
+          {seen === tickets.length && ` · ${agree}/${seen} match hand labels`}
         </div>
 
         <div className="mono mt-4 h-5 truncate text-xs text-ink-soft">
@@ -130,7 +130,7 @@ export default function RoiPanel() {
       </section>
 
       <section>
-        <ul className="flex flex-col gap-3">
+        <ul className="flex flex-col gap-2.5">
           {byCat.map((c) => {
             const total = totals[c.category];
             return (
@@ -141,7 +141,7 @@ export default function RoiPanel() {
                     {c.resolved}/{c.total}
                   </span>
                 </div>
-                <div className="mt-1 flex h-1.5 overflow-hidden rounded-full bg-paper-lo">
+                <div className="mt-1 flex h-1 overflow-hidden rounded-full bg-paper-lo">
                   <div
                     className="bg-ink transition-[width] duration-100"
                     style={{ width: `${(c.resolved / total) * 100}%` }}

@@ -15,7 +15,7 @@ export default function GuidelinesPanel() {
   const [text, setText] = useState("");
   const [editing, setEditing] = useState<string | null>(null);
   const [editText, setEditText] = useState("");
-  const inputRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // "Draft rule" from Insights lands here.
   useEffect(() => {
@@ -53,101 +53,98 @@ export default function GuidelinesPanel() {
   };
 
   const active = opsRules.filter((r) => r.enabled).length;
+  const presets = OPS_PRESETS.filter((p) => !opsRules.some((r) => r.text === p));
+  const nearLimit = text.length > MAX_OPS_RULE_CHARS - 40;
 
   return (
-    <div className="flex flex-col gap-10 p-6">
+    <div className="flex flex-col gap-8 px-4 py-5 sm:p-6">
       {/* a) live operations rules */}
       <section>
-        <div className="flex items-baseline justify-between gap-4 border-b border-line pb-3">
-          <span className="label">Operations rules · live</span>
-          <span className="mono text-sm text-ink-mute">
-            {active} active
+        <div
+          className="panel-head"
+          title="Applied from the customer's next message. The scripted fallback (no API key) only matches place names and keywords."
+        >
+          <span className="label">Operations rules</span>
+          <span className="mono flex items-center gap-1.5 text-xs text-ink-mute">
+            {active > 0 && <span className="live-dot !bg-accent-green" />}
+            {active} live
           </span>
         </div>
-        <p className="mt-3 font-serif leading-snug text-ink-soft">
-          Applied from the customer&apos;s very next message. No redeploy.
-        </p>
 
-        {opsRules.length === 0 ? (
-          <p className="mt-4 font-serif text-ink-mute">No operations rules yet. Add one below or tap a preset.</p>
-        ) : (
-          <ul className="mt-3">
-            {opsRules.map((r, i) => (
-              <li key={r.id} className={`border-b border-line py-3 ${r.enabled ? "" : "opacity-50"}`}>
-                <div className="flex items-start gap-3">
-                  <span className="sticker sticker-ink mt-0.5 shrink-0" style={{ transform: `rotate(${i % 2 ? 1.5 : -1.5}deg)` }}>
-                    {r.id}
-                  </span>
-                  {editing === r.id ? (
-                    <form
-                      className="flex min-w-0 flex-1 flex-col gap-2"
-                      onSubmit={(e) => {
-                        e.preventDefault();
-                        saveEdit();
-                      }}
-                    >
-                      <textarea
-                        autoFocus
-                        rows={2}
-                        maxLength={MAX_OPS_RULE_CHARS}
-                        value={editText}
-                        onChange={(e) => setEditText(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
-                            e.preventDefault();
-                            saveEdit();
-                          }
-                          if (e.key === "Escape") setEditing(null);
-                        }}
-                        className="card w-full resize-none px-3 py-2 font-serif leading-snug outline-none focus:border-ink"
-                      />
-                      <div className="flex gap-2">
-                        <button type="submit" className="btn px-3 py-1 text-sm" disabled={!editText.trim()}>
-                          Save
-                        </button>
-                        <button type="button" className="btn btn-ghost px-3 py-1 text-sm" onClick={() => setEditing(null)}>
-                          Cancel
-                        </button>
-                      </div>
-                    </form>
-                  ) : (
-                    <p className={`min-w-0 flex-1 font-serif leading-snug break-words ${r.enabled ? "" : "line-through"}`}>{r.text}</p>
-                  )}
-                  {hits[r.id] > 0 && editing !== r.id && (
-                    <span className="mono shrink-0 pt-0.5 text-xs font-bold" title="Times applied this session">
-                      ×{hits[r.id]}
-                    </span>
-                  )}
-                </div>
-                {editing !== r.id && (
-                  <div className="mt-2 flex items-center gap-4 pl-12">
-                    <label className="flex cursor-pointer items-center gap-2">
-                      <input
-                        type="checkbox"
-                        className="peer sr-only"
-                        checked={r.enabled}
-                        onChange={(e) => update(r.id, { enabled: e.target.checked })}
-                      />
-                      <span className="relative h-4 w-7 rounded-full border border-ink bg-paper-lo transition peer-checked:bg-accent-green peer-focus-visible:outline-2 after:absolute after:top-[1px] after:left-[1px] after:h-3 after:w-3 after:rounded-full after:bg-ink after:transition peer-checked:after:translate-x-3" />
-                      <span className="mono text-xs text-ink-mute">{r.enabled ? "on" : "off"}</span>
+        {opsRules.length > 0 && (
+          <ul>
+            {opsRules.map((r) => (
+              <li key={r.id} className="border-b border-line py-2">
+                {editing === r.id ? (
+                  <form
+                    className="flex flex-col gap-2 py-1"
+                    onSubmit={(e) => {
+                      e.preventDefault();
+                      saveEdit();
+                    }}
+                  >
+                    <label htmlFor={`ops-edit-${r.id}`} className="sr-only">
+                      Edit rule {r.id}
                     </label>
+                    <textarea
+                      id={`ops-edit-${r.id}`}
+                      autoFocus
+                      rows={2}
+                      maxLength={MAX_OPS_RULE_CHARS}
+                      value={editText}
+                      onChange={(e) => setEditText(e.target.value)}
+                      onKeyDown={(e) => {
+                        if (e.key === "Enter" && !e.shiftKey) {
+                          e.preventDefault();
+                          saveEdit();
+                        }
+                        if (e.key === "Escape") setEditing(null);
+                      }}
+                      className="card w-full resize-none px-3 py-2 font-serif leading-snug outline-none focus:border-ink"
+                    />
+                    <div className="flex items-center gap-4">
+                      <button type="submit" className="btn px-3 py-0.5 text-sm" disabled={!editText.trim()}>
+                        Save
+                      </button>
+                      <button type="button" className="link-btn" onClick={() => setEditing(null)}>
+                        cancel
+                      </button>
+                      <button type="button" className="link-btn ml-auto hover:!text-accent-red" onClick={() => remove(r.id)}>
+                        delete
+                      </button>
+                    </div>
+                  </form>
+                ) : (
+                  <div className="flex items-center gap-3">
+                    <span className="mono w-8 shrink-0 text-[0.7rem] text-ink-mute">{r.id}</span>
                     <button
                       type="button"
-                      className="mono text-xs text-ink-mute underline-offset-2 hover:text-ink hover:underline"
+                      title="Edit"
+                      className={`min-w-0 flex-1 text-left font-serif leading-snug break-words hover:underline hover:decoration-line ${
+                        r.enabled ? "" : "text-ink-mute line-through"
+                      }`}
                       onClick={() => {
                         setEditing(r.id);
                         setEditText(r.text);
                       }}
                     >
-                      edit
+                      {r.text}
                     </button>
-                    <button
-                      type="button"
-                      className="mono text-xs text-ink-mute underline-offset-2 hover:text-accent-red hover:underline"
-                      onClick={() => remove(r.id)}
-                    >
-                      delete
-                    </button>
+                    {hits[r.id] > 0 && (
+                      <span className="mono shrink-0 text-xs font-bold tabular-nums" title="Times applied this session">
+                        ×{hits[r.id]}
+                      </span>
+                    )}
+                    <label className="flex shrink-0 cursor-pointer items-center" title={r.enabled ? "On" : "Off"}>
+                      <input
+                        type="checkbox"
+                        className="peer sr-only"
+                        checked={r.enabled}
+                        aria-label={`Rule ${r.id} enabled`}
+                        onChange={(e) => update(r.id, { enabled: e.target.checked })}
+                      />
+                      <span className="switch" />
+                    </label>
                   </div>
                 )}
               </li>
@@ -156,75 +153,67 @@ export default function GuidelinesPanel() {
         )}
 
         <form
-          className="mt-5 flex flex-col gap-2"
+          className="mt-3 flex items-stretch gap-2"
           onSubmit={(e) => {
             e.preventDefault();
             add(text);
           }}
         >
-          <label htmlFor="ops-new" className="label text-ink-mute">
+          <label htmlFor="ops-new" className="sr-only">
             New rule
           </label>
-          <textarea
+          <input
             id="ops-new"
             ref={inputRef}
-            rows={2}
             maxLength={MAX_OPS_RULE_CHARS}
             value={text}
-            placeholder="e.g. No deliveries to Åland this week"
+            disabled={full}
+            placeholder={full ? `Max ${MAX_OPS_RULES} rules` : "Add a rule…"}
             onChange={(e) => setText(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === "Enter" && !e.shiftKey) {
-                e.preventDefault();
-                add(text);
-              }
-            }}
-            className="card w-full resize-none px-3 py-2 font-serif leading-snug outline-none placeholder:text-ink-mute focus:border-ink"
+            className="card min-w-0 flex-1 px-3 py-1.5 font-serif outline-none placeholder:text-ink-mute focus:border-ink"
           />
-          <div className="flex items-center justify-between gap-3">
-            <span className="mono text-xs text-ink-mute">
-              {full ? `max ${MAX_OPS_RULES} rules` : `${text.length}/${MAX_OPS_RULE_CHARS}`}
-            </span>
-            <button type="submit" className="btn px-4 py-1.5 text-base" disabled={!text.trim() || full}>
-              Add rule
-            </button>
-          </div>
+          <button type="submit" className="btn px-4 py-0 text-base" disabled={!text.trim() || full}>
+            Add
+          </button>
         </form>
+        {nearLimit && (
+          <div className="mono mt-1 text-right text-[0.7rem] text-ink-mute">
+            {text.length}/{MAX_OPS_RULE_CHARS}
+          </div>
+        )}
 
-        <div className="mt-4 flex flex-wrap gap-2">
-          {OPS_PRESETS.filter((p) => !opsRules.some((r) => r.text === p)).map((p) => (
-            <button key={p} type="button" className="chip text-[0.9rem]" disabled={full} onClick={() => add(p)}>
-              + {p}
-            </button>
-          ))}
-        </div>
-
-        <p className="mono mt-5 text-[0.72rem] leading-relaxed text-ink-mute">
-          The live agent reads every rule word for word. The scripted fallback (no API key) only honours them approximately, by
-          matching place names and keywords.
-        </p>
+        {presets.length > 0 && !full && (
+          <div className="mt-3 flex flex-wrap items-baseline gap-x-3 gap-y-1">
+            <span className="mono text-[0.7rem] text-ink-mute">try</span>
+            {presets.map((p) => (
+              <button key={p} type="button" className="link-btn text-left !whitespace-normal" onClick={() => add(p)}>
+                + {p}
+              </button>
+            ))}
+          </div>
+        )}
       </section>
 
       {/* b) company guidelines (read-only) */}
       <section>
-        <div className="flex items-baseline justify-between border-b border-line pb-3">
+        <div className="panel-head" title="Operations rules override these, except G-1 (engine prices) and G-8 (stay in role).">
           <span className="label">Company guidelines</span>
           <span className="mono text-xs text-ink-mute">read-only</span>
         </div>
         <ul>
           {rules.map((r) => (
-            <li key={r.id} className="flex items-start gap-3 border-b border-line py-2.5">
-              <span className="mono w-10 shrink-0 pt-0.5 text-xs font-bold">{r.id}</span>
-              <div className="min-w-0 flex-1">
-                <p className="font-serif leading-snug">{r.short}</p>
-                <p className="mt-0.5 text-[0.9rem] leading-snug text-ink-soft">{r.text}</p>
-              </div>
+            <li key={r.id} className="border-b border-line">
+              <details className="group">
+                <summary className="flex cursor-pointer list-none items-baseline gap-3 py-2 [&::-webkit-details-marker]:hidden">
+                  <span className="mono w-8 shrink-0 text-[0.7rem] text-ink-mute">{r.id}</span>
+                  <span className="min-w-0 flex-1 font-serif leading-snug">{r.short}</span>
+                  <span className="mono text-xs text-ink-mute transition group-open:rotate-90">›</span>
+                </summary>
+                <p className="pb-2.5 pl-11 text-[0.92rem] leading-snug text-ink-soft">{r.text}</p>
+              </details>
             </li>
           ))}
         </ul>
-        <p className="mono mt-3 text-[0.72rem] leading-relaxed text-ink-mute">
-          Operations rules override defaults, never G-1 (engine prices) or G-8 (stay in role).
-        </p>
       </section>
     </div>
   );

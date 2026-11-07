@@ -88,59 +88,75 @@ export default function CompliancePanel() {
     return c;
   }, [events]);
 
+  const allPassed = done === tests.length && passed === tests.length;
+
   return (
-    <div className="flex flex-col gap-10 p-6">
+    <div className="flex flex-col gap-8 px-4 py-5 sm:p-6">
       {/* a) stress tests */}
       <section>
-        <div className="flex items-end justify-between gap-4 border-b border-line pb-4">
+        <div className="flex items-end justify-between gap-4 border-b border-line pb-3">
           <div>
-            <span className="label">Stress-test suite</span>
-            <div className="font-serif leading-none" style={{ fontSize: "4.5rem", letterSpacing: "-2px" }}>
-              {passed}
-              <span className="italic text-ink-mute">/{tests.length}</span>
-            </div>
-            <div className="mono mt-1 text-xs text-ink-mute">
-              {running ? "running…" : lastRun ? `last run ${clock(lastRun)} · all passed` : " "}
+            <span className="label">Stress tests</span>
+            <div className="mt-1 flex flex-wrap items-baseline gap-x-3">
+              <span className="font-serif leading-none tabular-nums" style={{ fontSize: "3.25rem", letterSpacing: "-1.5px" }}>
+                {passed}
+                <span className="text-ink-mute">/{tests.length}</span>
+              </span>
+              <span className={`mono text-xs whitespace-nowrap ${!running && done === tests.length && !allPassed ? "text-accent-red" : "text-ink-mute"}`}>
+                {running
+                  ? `running… ${done}/${tests.length}`
+                  : lastRun
+                    ? `${allPassed ? "all passed" : `${done - passed} failed`} · ${clock(lastRun)}`
+                    : ""}
+              </span>
             </div>
           </div>
-          <button type="button" className="btn" onClick={run} disabled={running}>
+          <button type="button" className="btn px-4 py-1.5 text-base" onClick={run} disabled={running}>
             {running ? "Running…" : "Run suite"}
           </button>
         </div>
 
-        <ol className="mt-2">
+        <ol>
           {tests.map((t, i) => {
             const s = statuses[i];
             const r = results[i];
             const failedRules = new Set(r?.checks.filter((c) => !c.pass).map((c) => c.ruleId));
+            const bad = s === "fail" || s === "error";
             const isOpen = open === t.id && !!r;
             return (
-              <li key={t.id} className={`border-b border-line transition-opacity ${s === "pending" ? "opacity-40" : ""}`}>
+              <li
+                key={t.id}
+                className={`border-b border-line transition-opacity ${s === "pending" ? "opacity-40" : ""} ${bad ? "bg-accent-red/5" : ""}`}
+              >
                 <button
                   type="button"
-                  className="flex w-full items-start gap-3 py-2.5 text-left disabled:cursor-default"
+                  className="flex w-full items-baseline gap-3 py-2 text-left disabled:cursor-default"
                   disabled={!r}
+                  aria-expanded={r ? isOpen : undefined}
+                  title={`${t.id} · ${t.rules.join(", ")}`}
                   onClick={() => setOpen(isOpen ? null : t.id)}
                 >
-                  <span className="mono w-11 shrink-0 pt-0.5 text-[0.7rem] text-ink-mute">{t.id}</span>
-                  <span className="flex-1 font-serif leading-snug">{t.input}</span>
-                  <span className="flex shrink-0 gap-1 pt-0.5">
-                    {t.rules.map((rid, k) => (
-                      <span key={rid} className={`sticker ${failedRules.has(rid) ? "sticker-red" : "sticker-ink"}`} style={tilt(i + k)}>
-                        {rid}
-                      </span>
-                    ))}
-                  </span>
                   <span
-                    className={`mono w-16 shrink-0 pt-0.5 text-right text-xs ${
-                      s === "pass" ? "text-accent-green" : s === "fail" || s === "error" ? "text-accent-red" : "text-ink-mute"
-                    }`}
+                    className={`mono w-4 shrink-0 text-center text-xs ${bad ? "text-accent-red" : s === "pass" ? "text-accent-green" : "text-ink-mute"}`}
+                    aria-label={s}
                   >
-                    {{ pass: "✓ pass", fail: "✗ fail", error: "error", running: "running…", pending: "pending" }[s]}
+                    {{ pass: "✓", fail: "✗", error: "!", running: "…", pending: "·" }[s]}
                   </span>
+                  <span className={`min-w-0 flex-1 font-serif leading-snug ${bad ? "" : "text-ink-soft"}`}>{t.input}</span>
+                  {bad ? (
+                    <span className="flex shrink-0 gap-1">
+                      {(failedRules.size ? [...failedRules] : t.rules).map((rid, k) => (
+                        <span key={rid} className="sticker sticker-red" style={tilt(i + k)}>
+                          {rid}
+                        </span>
+                      ))}
+                    </span>
+                  ) : (
+                    <span className="mono shrink-0 text-[0.7rem] text-ink-mute">{t.rules.join(" ")}</span>
+                  )}
                 </button>
                 {isOpen && (
-                  <div className="rise mb-3 ml-14 space-y-1.5 border-l-2 border-ink pl-3">
+                  <div className="rise mb-3 ml-7 space-y-1 border-l-2 border-ink pl-3">
                     <p className="font-serif leading-snug text-ink-soft">“{r.reply}”</p>
                     {r.checks.map((c) => (
                       <p key={c.ruleId} className="mono text-[0.72rem] leading-snug">
@@ -148,6 +164,7 @@ export default function CompliancePanel() {
                         <span className="text-ink-mute">{c.how}</span> · {c.note}
                       </p>
                     ))}
+                    <p className="mono text-[0.7rem] text-ink-mute">{t.id}</p>
                   </div>
                 )}
               </li>
@@ -158,27 +175,23 @@ export default function CompliancePanel() {
 
       {/* b) live guard feed */}
       <section>
-        <div className="flex items-baseline justify-between border-b border-line pb-3">
+        <div className="panel-head">
           <span className="label">Live guard feed</span>
           <span className="mono text-sm text-ink-mute">{events.length}</span>
         </div>
         {events.length === 0 ? (
-          <p className="mt-4 font-serif text-ink-mute">Quiet so far.</p>
+          <p className="mt-3 font-serif text-ink-mute">Quiet so far.</p>
         ) : (
           <ul>
             {events.map((e, i) => (
-              <li key={e.id} className={`border-b border-line py-3 ${i === 0 ? "rise" : ""}`}>
-                <div className="flex items-center gap-3">
-                  <span className="sticker sticker-red" style={tilt(i)}>
-                    {e.ruleId}
-                  </span>
-                  <span className="flex-1 font-serif">{shortOf(e.ruleId)}</span>
-                  <span className="mono text-xs">→ {ACTION[e.action] ?? e.action}</span>
-                  <span className="mono text-xs text-ink-mute">{clock(e.at)}</span>
+              <li key={e.id} className={`border-b border-line py-2 ${i === 0 ? "rise" : ""}`}>
+                <div className="flex items-baseline gap-3">
+                  <span className="mono w-8 shrink-0 text-[0.7rem] font-bold">{e.ruleId}</span>
+                  <span className="min-w-0 flex-1 truncate font-serif">{shortOf(e.ruleId)}</span>
+                  <span className="mono shrink-0 text-xs">→ {ACTION[e.action] ?? e.action}</span>
+                  <span className="mono hidden shrink-0 text-xs text-ink-mute sm:inline">{clock(e.at)}</span>
                 </div>
-                {e.excerpt && (
-                  <p className="mono mt-1.5 truncate pl-1 text-xs text-ink-soft">“{e.excerpt}”</p>
-                )}
+                {e.excerpt && <p className="mono mt-0.5 truncate pl-11 text-xs text-ink-mute">“{e.excerpt}”</p>}
               </li>
             ))}
           </ul>
@@ -187,8 +200,9 @@ export default function CompliancePanel() {
 
       {/* c) rules */}
       <section>
-        <div className="border-b border-line pb-3">
+        <div className="panel-head">
           <span className="label">Rules</span>
+          <span className="mono text-xs text-ink-mute">hits</span>
         </div>
         <table className="w-full border-collapse">
           <tbody>
@@ -196,10 +210,10 @@ export default function CompliancePanel() {
               const n = counts[r.id] ?? 0;
               return (
                 <tr key={r.id} className={`border-b border-line ${n > 0 ? "bg-label-yellow/40" : ""}`}>
-                  <td className="mono w-14 py-2 pl-2 text-xs font-bold">{r.id}</td>
-                  <td className={`py-2 font-serif ${n > 0 ? "" : "text-ink-soft"}`}>{r.short}</td>
-                  <td className={`mono w-10 py-2 pr-2 text-right text-sm ${n > 0 ? "font-bold" : "text-ink-mute"}`}>
-                    {n}
+                  <td className="mono w-11 py-1.5 pl-1 text-[0.7rem] text-ink-mute">{r.id}</td>
+                  <td className={`py-1.5 font-serif ${n > 0 ? "" : "text-ink-soft"}`}>{r.short}</td>
+                  <td className={`mono w-10 py-1.5 pr-1 text-right text-sm tabular-nums ${n > 0 ? "font-bold" : "text-ink-mute"}`}>
+                    {n || "·"}
                   </td>
                 </tr>
               );

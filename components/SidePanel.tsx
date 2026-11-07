@@ -24,20 +24,33 @@ const TABS: { id: Tab; label: string }[] = [
 
 export function SidePanel() {
   const { tab, setTab, unseen } = useStore();
+  const activeRef = useRef<HTMLButtonElement>(null);
+  // Keep the active tab visible when the bar scrolls (phone width).
+  // Scroll only the bar itself: scrollIntoView would also move the page.
+  useEffect(() => {
+    const el = activeRef.current;
+    const bar = el?.parentElement;
+    if (!el || !bar) return;
+    const left = el.offsetLeft - bar.offsetLeft;
+    if (left < bar.scrollLeft || left + el.offsetWidth > bar.scrollLeft + bar.clientWidth)
+      bar.scrollTo({ left: left - 16, behavior: "smooth" });
+  }, [tab]);
   return (
     <aside className="relative flex min-h-0 flex-col border-t border-line bg-paper-lo/40 lg:border-t-0 lg:border-l">
-      <nav className="scroll-thin flex shrink-0 gap-6 overflow-x-auto px-6 pt-6 sm:px-8">
+      <nav className="tabbar scroll-thin flex shrink-0 gap-5 overflow-x-auto px-4 pt-5 sm:gap-6 sm:px-6 sm:pt-6" aria-label="Side panel">
         {TABS.map((t) => (
           <button
             key={t.id}
+            ref={tab === t.id ? activeRef : undefined}
             onClick={() => setTab(t.id)}
-            className={`label relative shrink-0 border-b-2 pb-2 transition ${
+            aria-current={tab === t.id ? "page" : undefined}
+            className={`flex shrink-0 items-center gap-1.5 border-b-2 pb-2 text-[0.95rem] transition ${
               tab === t.id ? "border-ink text-ink" : "border-transparent text-ink-mute hover:text-ink"
             }`}
           >
             {t.label}
             {unseen[t.id] > 0 && (
-              <span className="mono absolute -top-2 -right-3.5 grid h-4 min-w-4 place-items-center rounded-full bg-accent-orange px-1 text-[0.62rem] text-white">
+              <span className="mono grid h-4 min-w-4 place-items-center rounded-full bg-accent-orange px-1 text-[0.6rem] leading-none text-white">
                 {unseen[t.id]}
               </span>
             )}
@@ -62,22 +75,27 @@ function ParcelView() {
   const { events, leads, handoffs, quotes, setTab } = useStore();
   const stripped = events.filter((e) => e.action === "stripped").length;
   const stats: { k: string; v: string | number; tab?: Tab }[] = [
-    { k: "Quotes issued", v: Object.keys(quotes).length },
-    { k: "Rules triggered", v: events.length, tab: "compliance" },
-    { k: "Prices stripped", v: stripped, tab: "compliance" },
-    { k: "Leads / handovers", v: `${leads.length} / ${handoffs.length}`, tab: leads.length ? "leads" : "inbox" },
+    { k: "quotes", v: Object.keys(quotes).length },
+    { k: "rule hits", v: events.length, tab: "compliance" },
+    { k: "prices stripped", v: stripped, tab: "compliance" },
+    { k: "leads/handovers", v: `${leads.length} / ${handoffs.length}`, tab: leads.length ? "leads" : "inbox" },
   ];
   return (
-    <div className="flex min-h-full flex-col justify-center px-6 pb-8 sm:px-10">
+    <div className="flex min-h-full flex-col justify-center px-4 pb-8 sm:px-10">
       <Parcel />
-      <dl className="mx-auto grid w-full max-w-md grid-cols-2 gap-x-8 gap-y-5">
+      <div className="mx-auto grid w-full max-w-lg grid-cols-2 border-t border-line sm:grid-cols-4">
         {stats.map((s) => (
-          <button key={s.k} className="text-left disabled:cursor-default" disabled={!s.tab} onClick={() => s.tab && setTab(s.tab)}>
-            <dt className="label">{s.k}</dt>
-            <dd className="mono mt-1 text-lg">{s.v}</dd>
+          <button
+            key={s.k}
+            className="group self-start px-2 pt-4 text-left disabled:cursor-default sm:text-center"
+            disabled={!s.tab}
+            onClick={() => s.tab && setTab(s.tab)}
+          >
+            <span className="block font-serif text-2xl leading-none tabular-nums group-enabled:group-hover:underline">{s.v}</span>
+            <span className="mono mt-1.5 block text-[0.7rem] whitespace-nowrap text-ink-mute">{s.k}</span>
           </button>
         ))}
-      </dl>
+      </div>
     </div>
   );
 }
