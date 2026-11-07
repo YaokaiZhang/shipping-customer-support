@@ -1,0 +1,8 @@
+[
+  { "id": "box-s", "name": "Padded box S", "kind": "box", "innerCm": [27, 17, 12], "outerCm": [30, 20, 15], "weightKg": 0.3, "price": 2.9, "description": "Double-wall box with foam lining." },
+  { "id": "box-m", "name": "Padded box M", "kind": "box", "innerCm": [37, 27, 27], "outerCm": [40, 30, 30], "weightKg": 0.5, "price": 3.9, "description": "Double-wall box with foam lining." },
+  { "id": "box-l", "name": "Padded box L", "kind": "box", "innerCm": [47, 37, 37], "outerCm": [50, 40, 40], "weightKg": 0.8, "price": 5.5, "description": "Double-wall box with foam lining." },
+  { "id": "bottle", "name": "Bottle protector", "kind": "box", "innerCm": [36, 12, 12], "outerCm": [40, 15, 15], "weightKg": 0.3, "price": 3.5, "description": "Moulded pulp sleeve for one bottle, leak-proof bag inside." },
+  { "id": "bubble", "name": "Bubble wrap roll", "kind": "wrap", "weightKg": 0.2, "price": 4.5, "description": "3 m roll for items too large for our boxes." },
+  { "id": "fragile-kit", "name": "Fragile kit", "kind": "kit", "weightKg": 0.2, "price": 3.5, "description": "Corner foam, void fill and FRAGILE labels." }
+]

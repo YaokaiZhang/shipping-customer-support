@@ -13,15 +13,25 @@ const SCHEMA = {
     estWeightKg: { type: "number" },
     confidence: { type: "number", description: "0 to 1" },
     referenceObjectFound: { type: ["string", "null"], description: "'A4 sheet', 'bank card', or null" },
+    itemLabel: { type: "string", description: "What the item is, one to three plain words, e.g. 'glass vase', 'power bank'." },
+    cues: {
+      type: "array",
+      items: { type: "string" },
+      description:
+        "Visible materials, contents and hazard cues, short lowercase phrases, e.g. 'glass', 'liquid', 'lithium battery pack', 'aerosol can', 'perfume'. Empty if none.",
+    },
+    fragile: { type: "boolean", description: "Would break or dent without padding (glass, ceramic, screens, thin shells)." },
+    packed: { type: "boolean", description: "true if the item is already inside a closed shipping box or mailer; false if it is shown unpacked." },
   },
-  required: ["lengthCm", "widthCm", "heightCm", "estWeightKg", "confidence", "referenceObjectFound"],
+  required: ["lengthCm", "widthCm", "heightCm", "estWeightKg", "confidence", "referenceObjectFound", "itemLabel", "cues", "fragile", "packed"],
   additionalProperties: false,
 };
 
 const SYSTEM = `You measure items for parcel shipping from a single photo.
 Look for a reference object: an A4 sheet (21.0 × 29.7 cm) or a bank card (8.56 × 5.40 cm). Use it to scale, correcting for perspective.
 Return the item's own bounding box in centimetres (length ≥ width; height is vertical), rounded to whole cm, and its likely weight in kg from material and size.
-confidence is how sure you are of the dimensions (0–1): above 0.8 only with a clear reference object and an unobstructed view; below 0.6 without a reference object.`;
+confidence is how sure you are of the dimensions (0–1): above 0.8 only with a clear reference object and an unobstructed view; below 0.6 without a reference object.
+Also say what the item is (itemLabel), list what you can see that matters for shipping safety in cues (materials such as glass or ceramic, liquids, batteries, aerosol or pressurised cans, perfume, alcohol, fireworks, cash), whether it is fragile, and whether it is already packed in a box. Only list cues you can actually see; do not guess hidden contents.`;
 
 type Media = Anthropic.Base64ImageSource["media_type"];
 
@@ -38,12 +48,12 @@ async function load(imageUrl: string): Promise<{ data: string; media: Media }> {
 /** Vision call with a strict JSON schema. The UI always shows the result as editable. */
 export async function estimateDimensions(imageUrl: string): Promise<DimensionEstimate> {
   const img = await load(imageUrl);
-  const e = await structured<Omit<DimensionEstimate, "imageUrl">>({
+  const e = await structured<Omit<DimensionEstimate, "imageUrl" | "restriction">>({
     system: SYSTEM,
     schema: SCHEMA,
     content: [
       { type: "image", source: { type: "base64", media_type: img.media, data: img.data } },
-      { type: "text", text: "Measure the item to be shipped." },
+      { type: "text", text: "Measure the item to be shipped and describe what it is." },
     ],
   });
   const cm = (n: number) => Math.max(1, Math.round(n));
@@ -55,5 +65,9 @@ export async function estimateDimensions(imageUrl: string): Promise<DimensionEst
     estWeightKg: Math.max(0.1, Math.round(e.estWeightKg * 10) / 10),
     confidence: Math.min(1, Math.max(0, e.confidence)),
     referenceObjectFound: e.referenceObjectFound || null,
+    itemLabel: e.itemLabel?.trim().toLowerCase() || undefined,
+    cues: (e.cues ?? []).map((c) => c.trim().toLowerCase()).filter(Boolean).slice(0, 6),
+    fragile: !!e.fragile,
+    packed: !!e.packed,
   };
 }

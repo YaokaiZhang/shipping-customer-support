@@ -4,16 +4,25 @@
  * Prices still come from the real pricing engine; text still goes through the real guard.
  */
 import { guardPrices } from "../guard";
+import { matchOpsRule } from "../ops-rules";
 import { shortId } from "../id";
 import { compareOptions, detectPlace, fmtEta, standardBox } from "../pricing";
 import { matchRestriction } from "../restrictions";
+import { bookingMessage, bookQuote } from "../agent/booking-store";
+import { mockParcel } from "./parcel";
+import { volumeLine } from "../volume";
+import { mockPacket, mockVolume } from "./packets";
+import { packedShipment } from "../packaging";
+import { photoPackaging, photoRestriction, restrictionLine } from "../photo-check";
 import type {
   Block,
+  Booking,
   Chip,
   DimensionEstimate,
   GuardEvent,
   Handoff,
   Message,
+  OpsRule,
   Quote,
   SalesLead,
   ShipmentProfile,
@@ -26,7 +35,19 @@ export type { TurnInput, TurnResult };
 export interface TurnContext {
   profile: ShipmentProfile;
   quotes: Quote[]; // issued in this conversation
+  /** Enabled operations rules (already sanitized). Honoured approximately: keyword match only. */
+  opsRules?: OpsRule[];
+  /** Earlier messages (reroute finds the last tracking card) and bookings (client copies). */
+  history?: Message[];
+  bookings?: Booking[];
 }
+
+/** Questions our guidelines don't answer → logged as knowledge gaps for the Insights tab. */
+const GAPS: [RegExp, string][] = [
+  [/\b(sunday|saturday|weekends?|sunnuntai\w*|lauantai\w*|viikonlop\w*|söndag|lördag|helg)\b/i, "Weekend delivery"],
+  [/\bp\.?\s?o\.?\s?box(es)?\b|post office box|postbox|postilokero/i, "PO box delivery"],
+  [/pick(ed)?\s?(it\s|them\s)?up from (my |our )?(home|house|door|flat|apartment|office)|home pick-?up|collect(ed)? from (my |our )?(home|house|door)|nouto kotoa|hakea kotoa/i, "Home pickup"],
+];
 
 const ev = (ruleId: string, action: GuardEvent["action"], excerpt: string): GuardEvent => ({
   id: shortId("E"),
@@ -41,7 +62,7 @@ const has = (t: string, re: RegExp) => re.test(t);
 const RE = {
   injection: /ignore (your|all|previous|the) (rules|instructions)|system prompt|you are now|developer mode/i,
   refund: /refund|money back|claim|compensation|never (came|arrived)|lost|arrived broken|damaged/i,
-  volume: /(\d+)\s*(parcels|packages|shipments|orders)\s*(a|per|\/)\s*(day|week|month)|webshop|web shop|our (company|business|store)|we're a|we are a/i,
+  volume: /(\d+)\s*(parcels|packages|shipments|orders)\s*(a|per|\/)\s*(day|week|month)|webshop|web shop|e-?shop|online store|our (company|business|store)|we're a|we are a|per month|a month|monthly|\bbusiness\b(?! day)|\bvolume\b/i,
   guarantee: /guarantee|promise|for sure|definitely arrive|arrive(s)? (by|on|before)/i,
   discount: /discount|\d+\s?% off|% discount|cheaper price|coupon|deal/i,
   competitor: /competitor|other carrier|match (it|their|the price)/i,
@@ -61,7 +82,11 @@ function say(text: string, issued: Quote[], extra: Partial<Message> = {}) {
 }
 
 const destinationChips: Chip[] = [{ label: "Tampere" }, { label: "Stockholm" }, { label: "Berlin" }];
-const photoChips: Chip[] = [{ label: "Use demo photo", action: "demo-photo" }, { label: "Upload photo", action: "upload" }];
+const photoChips: Chip[] = [
+  { label: "Use demo photo", action: "demo-photo" },
+  { label: "Upload photo", action: "upload" },
+  { label: "Demo: restricted item", action: "demo-photo", imageUrl: "/demo/powerbank-a4.jpg" },
+];
 
 export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<TurnResult> {
   const r: TurnResult = { messages: [], quotes: [], leads: [], handoffs: [], events: [], profile: { ...ctx.profile }, engine: "mock" };
@@ -74,26 +99,50 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
 
   // ── Photo → dimension estimate ───────────────────────────────
   if (input.kind === "image") {
-    const estimate: DimensionEstimate = input.demo
-      ? { imageUrl: input.imageUrl, lengthCm: 16, widthCm: 16, heightCm: 31, estWeightKg: 1.4, confidence: 0.86, referenceObjectFound: "A4 sheet" }
-      : { imageUrl: input.imageUrl, lengthCm: 30, widthCm: 20, heightCm: 15, estWeightKg: 2, confidence: 0.52, referenceObjectFound: null };
-    push(
+    const estimate: DimensionEstimate = !input.demo
+      ? { imageUrl: input.imageUrl, lengthCm: 30, widthCm: 20, heightCm: 15, estWeightKg: 2, confidence: 0.52, referenceObjectFound: null }
+      : /powerbank/.test(input.imageUrl)
+        ? // Demo of a restricted item: a loose power bank on an A4 sheet.
+          { imageUrl: input.imageUrl, lengthCm: 15, widthCm: 7, heightCm: 3, estWeightKg: 0.4, confidence: 0.82, referenceObjectFound: "A4 sheet",
+            itemLabel: "power bank", cues: ["lithium battery pack"], fragile: false, packed: false }
+        : { imageUrl: input.imageUrl, lengthCm: 16, widthCm: 16, heightCm: 31, estWeightKg: 1.4, confidence: 0.86, referenceObjectFound: "A4 sheet",
+            itemLabel: "glass vase", cues: ["glass"], fragile: true, packed: false };
+    // Same deterministic checks as the LLM path: restriction (G-4) and profile.
+    estimate.restriction = photoRestriction(estimate);
+    const res = estimate.restriction;
+    if (res) r.events.push(ev("G-4", res.rule === "forbidden" ? "held" : "routed", res.item));
+    if (estimate.itemLabel) r.profile.item = estimate.itemLabel;
+    if (estimate.fragile) r.profile.fragile = true;
+    const lines = [
+      estimate.itemLabel && `Looks like a ${estimate.itemLabel}.`,
+      res && restrictionLine(res),
       estimate.referenceObjectFound
-        ? `Measured against the ${estimate.referenceObjectFound}. Check the numbers, then I'll quote.`
-        : "I couldn't find a reference object, so these are rough. Please check them.",
-      { blocks: [{ type: "estimate", estimate }] },
-    );
+        ? `Measured against the ${estimate.referenceObjectFound}.`
+        : "I couldn't find a reference object, so these are rough.",
+      res?.rule !== "forbidden" && photoPackaging(estimate) && "I've suggested packaging on the card; it's optional.",
+      res?.rule !== "forbidden" && "Check the numbers, then I'll quote.",
+    ];
+    push(lines.filter(Boolean).join(" "), { blocks: [{ type: "estimate", estimate }] });
+    return r;
+  }
+
+  // ── Booking form submit → label (deterministic, same as the LLM path) ──
+  if (input.kind === "book") {
+    const o = bookQuote(input, ctx.quotes);
+    if (o.ok && !o.existing) r.bookings = [o.booking];
+    r.messages.push(bookingMessage(o));
     return r;
   }
 
   // ── Confirmed estimate → three options ───────────────────────
   if (input.kind === "estimate") {
-    const packed = standardBox(input.dims);
+    const packed = packedShipment(input.dims, input.weightKg, input.packagingIds);
     r.profile = {
       ...r.profile,
-      dimsCm: packed,
-      weightKg: Math.ceil((input.weightKg + 0.4) * 2) / 2,
+      dimsCm: standardBox(packed.dims),
+      weightKg: packed.weightKg,
       declaredValue: input.declaredValue,
+      packagingIds: packed.items.length ? packed.items.map((p) => p.id) : undefined,
     };
     return quoteNow(r, push);
   }
@@ -132,6 +181,7 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
       quoteIds: issued().map((q) => q.id),
       summary: `Customer requests a refund${tracking ? ` for ${tracking}` : ""}. No promises made in chat.`,
       createdAt: Date.now(),
+      ...mockPacket(t, tracking, r.profile, issued()),
     };
     r.handoffs.push(h);
     r.events.push(ev("G-5", "handed_off", t.slice(0, 48)));
@@ -140,6 +190,27 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
     });
     return r;
   }
+
+  // ── Tracking / reroute ("where's my parcel?", NP123456789FI) ──
+  const parcel = mockParcel(t, ctx);
+  if (parcel) {
+    push(parcel.text, parcel.extra);
+    return r;
+  }
+
+  const ops = ctx.opsRules?.length ? matchOpsRule(ctx.opsRules, `${t} ${r.profile.to ?? ""}`) : null;
+  let opsNote: string | null = null;
+  if (ops) {
+    const blocks = /\b(no|not|don't|do not|never|stop(ped)?|paused?|closed|suspend(ed)?|cancel(led)?)\b/i.test(ops.rule.text);
+    r.events.push(ev(ops.rule.id, blocks ? "held" : "rephrased", t.slice(0, 48)));
+    if (blocks) {
+      push(`Sorry, I can't book that right now. Our operations team has a current notice: "${ops.rule.text}" (${ops.rule.id}). Anything else I can help with?`);
+      return r;
+    }
+    opsNote = `Heads up, a current notice from our operations team: "${ops.rule.text}" (${ops.rule.id}).`;
+  }
+
+  if (opsNote) push(opsNote);
 
   const restriction = matchRestriction(t);
   if (restriction) {
@@ -155,25 +226,41 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
   }
 
   if (has(t, RE.volume)) {
-    const vol = t.match(/(\d+)\s*(parcels|packages|shipments|orders)\s*(a|per|\/)\s*(day|week|month)/i);
-    const volume = vol?.[1] ? `~${vol[1]} ${vol[2]} / ${vol[4]}` : "recurring";
-    const lanes = [`FI → ${place ? place.name : "?"}`];
+    // Indicative monthly cost at LIST prices (G-3) + the sales lead with the estimate attached (G-7).
+    const { v, assumed } = mockVolume(t, r.profile);
     const company = t.match(/(?:we're|we are|from)\s+([A-Z][\w&]+(?:\s[A-Z][\w&]+)*)/)?.[1] ?? "Small webshop (name pending)";
+    const lanes = "error" in v ? [`FI → ${place ? place.name : "?"}`] : v.lanes.map((l) => `FI → ${l.label} (${Math.round(l.share * 100)}%)`);
+    const volume = "error" in v ? "recurring" : volumeLine(v);
     const lead: SalesLead = {
       id: shortId("L"),
       company,
       volume,
       lanes,
-      needs: ["Contract pricing", "Pickup from sender", place?.zone === "NORDIC" ? "Cross-border Nordics" : "Domestic"],
-      summary: `E-commerce sender, ${volume}, mainly ${lanes[0]}. Interested in recurring shipping; asked about terms. No discount promised in chat.`,
+      needs: ["Contract pricing", "Pickup from sender", lanes.some((l) => !/Finland/.test(l)) ? "Cross-border" : "Domestic"],
+      summary: `E-commerce sender, ${volume}, ${lanes.join(", ")}. ${"error" in v ? "" : `List-price estimate ${v.id} shown in chat. `}No discount promised in chat.`,
       createdAt: Date.now(),
     };
+    if (!("error" in v)) {
+      v.leadId = lead.id;
+      lead.volumeQuote = v;
+    }
     r.leads.push(lead);
     r.events.push(ev("G-7", "routed", volume));
     if (has(t, RE.discount)) r.events.push(ev("G-3", "rephrased", t.match(RE.discount)![0]));
-    push("That's a good fit for a business contract. I've passed your details to our sales team; they'll send an offer within one business day. Until then, chat quotes are at list rates.", {
-      blocks: [{ type: "lead", leadId: lead.id }],
-    });
+    const guesses = ("error" in v ? [] : [assumed.parcels && "volume", assumed.weight && "weight", assumed.lanes && "destinations"]).filter(
+      (x): x is string => !!x,
+    );
+    push(
+      "error" in v
+        ? "That's a good fit for a business contract. I've passed your details to our sales team; they'll send an offer within one business day."
+        : `Here's an indicative monthly estimate at our standard list prices. I've passed it to our sales team, who prepare contract pricing within one business day.${
+            guesses.length ? ` I assumed the ${guesses.join(", ").replace(/, ([^,]*)$/, " and $1")}; tell me yours and I'll redo it.` : ""
+          }`,
+      {
+        blocks: ["error" in v ? { type: "lead", leadId: lead.id } : { type: "volume-quote", volumeQuote: v }],
+        ...(guesses.length ? { chips: [{ label: "200 parcels a month, 1.5 kg, 60% Sweden, 40% Finland" }] } : {}),
+      },
+    );
     return r;
   }
 
@@ -199,6 +286,13 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
       lines.push("Discounts aren't available in chat. If you ship regularly, I can connect you with our sales team.");
     }
     push(lines.join(" "));
+    return r;
+  }
+
+  const gap = GAPS.find(([re]) => re.test(t));
+  if (gap) {
+    r.gaps = [{ id: shortId("K"), topic: gap[1], question: t.slice(0, 160), at: Date.now() }];
+    push("Good question, but our current guidelines don't cover that, so I won't guess. I've flagged it for our operations team, and a colleague can confirm if it matters for your shipment.");
     return r;
   }
 
@@ -232,7 +326,8 @@ function quoteNow(r: TurnResult, push: (text: string, extra?: Partial<Message>) 
   r.quotes.push(...quotes);
   const block: Block = { type: "quotes", quoteIds: quotes.map((q) => q.id), highlight: quotes[Math.floor((quotes.length - 1) / 2)].id };
   const ins = quotes[0].addOns.find((a) => a.id === "insurance" && a.suggested);
-  push(ins ? `Three ways to send it. Since it's ${r.profile.fragile ? "fragile" : "valuable"}, I'd add insurance.` : "Three ways to send it.", {
+  const pkg = r.profile.packagingIds?.length ? " Your packaging is pre-selected on each card." : "";
+  push((ins ? `Three ways to send it. Since it's ${r.profile.fragile ? "fragile" : "valuable"}, I'd add insurance.` : "Three ways to send it.") + pkg, {
     blocks: [block],
   });
   return r;

@@ -2,9 +2,12 @@ import type Anthropic from "@anthropic-ai/sdk";
 import rules from "@/data/rules.json";
 import { shortId } from "../id";
 import { compareOptions, detectPlace, fmtEta, getQuote, products, standardBox } from "../pricing";
+import { guardPrices } from "../guard";
 import { matchRestriction } from "../restrictions";
-import type { Block, Chip, GuardEvent, Quote, ShipmentProfile, TurnResult, Zone } from "../types";
+import { volumeForModel, volumeLine, volumeQuote } from "../volume";
+import type { Block, Booking, Chip, GuardEvent, Handoff, HandoffUrgency, Quote, SalesLead, ShipmentProfile, TurnResult, Zone } from "../types";
 import { saveQuote } from "./quote-store";
+import { PARCEL_TOOLS, runParcelTool } from "./parcel-tools";
 
 const ZONES: Zone[] = ["FI", "NORDIC", "EU", "WORLD"];
 const RULE_IDS = rules.map((r) => r.id);
@@ -79,6 +82,38 @@ export const TOOLS: Anthropic.Tool[] = [
     },
   },
   {
+    name: "volume_quote",
+    description:
+      "For business / volume customers: show an indicative monthly cost card at LIST prices (per lane: recommended product, parcels, CO2) and log the sales lead with these numbers attached. It creates the lead itself, so do not also call create_sales_lead. No prices are returned to you and no discount exists in chat.",
+    input_schema: {
+      type: "object",
+      properties: {
+        parcelsPerMonth: { type: "number", description: "Parcels per month (convert from per week x4.3 or per day x22)." },
+        avgWeightKg: { type: "number", description: "Typical parcel weight in kg." },
+        lanes: {
+          type: "array",
+          description: "Main destinations with their share of parcels. Omit share to split evenly.",
+          items: {
+            type: "object",
+            properties: {
+              destination: { type: "string", description: "Country or region, in English, e.g. 'Sweden'." },
+              zone: { type: "string", enum: ZONES },
+              share: { type: "number", description: "Share of parcels, 0-1 or percent." },
+            },
+            required: ["zone"],
+            additionalProperties: false,
+          },
+        },
+        productId: { type: "string", enum: products.map((p) => p.id), description: "Only if the customer wants one specific product." },
+        company: { type: "string", description: "Company name, or a short description if unnamed." },
+        needs: { type: "array", items: { type: "string" }, description: "e.g. 'Pickup from warehouse', 'Returns'." },
+        summary: { type: "string", description: "Two sentences for the sales rep. Note that no discount was promised." },
+      },
+      required: ["parcelsPerMonth", "avgWeightKg", "lanes"],
+      additionalProperties: false,
+    },
+  },
+  {
     name: "handoff_to_human",
     description:
       "Hand the conversation to a human agent with a structured summary so they never re-ask. Required for refunds, claims, lost or damaged parcels.",
@@ -98,8 +133,19 @@ export const TOOLS: Anthropic.Tool[] = [
           description: "Facts gathered: tracking number, what happened, route, etc.",
         },
         summary: { type: "string", description: "One or two sentences for the human agent." },
+        urgency: {
+          type: "string",
+          enum: ["low", "normal", "high"],
+          description: "high = parcel lost/damaged with time pressure or a very upset customer; low = general question.",
+        },
+        sentiment: { type: "string", description: "The customer's mood in two or three words, e.g. 'frustrated, polite'." },
+        draftReply: {
+          type: "string",
+          description:
+            "A reply the human agent can send as-is: acknowledges the issue, says what happens next, promises no outcome or compensation. In the customer's language, two to four sentences, no amounts of money.",
+        },
       },
-      required: ["intent", "reason", "details", "summary"],
+      required: ["intent", "reason", "details", "summary", "urgency", "sentiment", "draftReply"],
       additionalProperties: false,
     },
   },
@@ -109,11 +155,28 @@ export const TOOLS: Anthropic.Tool[] = [
     input_schema: {
       type: "object",
       properties: {
-        ruleId: { type: "string", enum: RULE_IDS },
+        ruleId: {
+          type: "string",
+          description: `A guideline id (${RULE_IDS.join(", ")}) or an operations rule id from <operations_rules> (O-1, O-2, ...).`,
+        },
         action: { type: "string", enum: ["rephrased", "held", "routed"] },
         excerpt: { type: "string", description: "The customer's words that triggered it, max 8 words." },
       },
       required: ["ruleId", "action", "excerpt"],
+      additionalProperties: false,
+    },
+  },
+  {
+    name: "log_knowledge_gap",
+    description:
+      "Log a customer question that the guidelines, operations rules and product list do not answer (e.g. Sunday delivery, PO boxes, pickup from home). Call it once, then answer honestly that you don't know or offer a human. Feeds the Insights report so operations can write a rule.",
+    input_schema: {
+      type: "object",
+      properties: {
+        topic: { type: "string", description: "Short label in English, 2-4 words, e.g. 'Sunday delivery'. Reuse the same label for the same topic." },
+        question: { type: "string", description: "The customer's question paraphrased in English, max 15 words." },
+      },
+      required: ["topic", "question"],
       additionalProperties: false,
     },
   },
@@ -130,6 +193,7 @@ export const TOOLS: Anthropic.Tool[] = [
       additionalProperties: false,
     },
   },
+  ...PARCEL_TOOLS,
 ];
 
 /** Mutable state of one turn; tools write into it. */
@@ -139,6 +203,12 @@ export interface TurnState {
   blocks: Block[];
   chips: Chip[];
   tools: string[];
+  /** Bookings from earlier turns (client copies); tracking looks these up. */
+  bookings?: Booking[];
+  /** Chat id from the request; stamped on handoffs. */
+  chatId?: string;
+  /** Ids of the operations rules sent with this turn; log_guideline accepts them. */
+  opsRuleIds?: string[];
 }
 
 const event = (ruleId: string, action: GuardEvent["action"], excerpt: string): GuardEvent => ({
@@ -151,6 +221,22 @@ const event = (ruleId: string, action: GuardEvent["action"], excerpt: string): G
 
 function addEvent(s: TurnState, e: GuardEvent) {
   if (!s.result.events.some((x) => x.ruleId === e.ruleId && x.action === e.action)) s.result.events.push(e);
+}
+
+/** Shared by create_sales_lead and volume_quote: one lead + one G-7 event. */
+function createLead(s: TurnState, input: In): SalesLead {
+  const lead: SalesLead = {
+    id: shortId("L"),
+    company: String(input.company ?? "Unnamed business"),
+    volume: String(input.volume ?? "recurring"),
+    lanes: (input.lanes as string[]) ?? [],
+    needs: (input.needs as string[]) ?? [],
+    summary: String(input.summary ?? ""),
+    createdAt: Date.now(),
+  };
+  s.result.leads.push(lead);
+  addEvent(s, event("G-7", "routed", lead.volume));
+  return lead;
 }
 
 const missing = (p: ShipmentProfile, needSize: boolean) =>
@@ -222,29 +308,54 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
       return res;
     }
     case "create_sales_lead": {
-      const lead = {
-        id: shortId("L"),
-        company: String(input.company ?? "Unnamed business"),
-        volume: String(input.volume ?? "recurring"),
-        lanes: (input.lanes as string[]) ?? [],
-        needs: (input.needs as string[]) ?? [],
-        summary: String(input.summary ?? ""),
-        createdAt: Date.now(),
-      };
-      r.leads.push(lead);
-      addEvent(s, event("G-7", "routed", lead.volume));
+      const lead = createLead(s, input);
       s.blocks.push({ type: "lead", leadId: lead.id });
       return { leadId: lead.id, status: "Sales will send a contract offer within one business day." };
     }
+    case "volume_quote": {
+      const v = volumeQuote({
+        parcelsPerMonth: Number(input.parcelsPerMonth),
+        avgWeightKg: Number(input.avgWeightKg),
+        lanes: input.lanes as { zone?: string; destination?: string; share?: number }[],
+        productId: typeof input.productId === "string" ? input.productId : undefined,
+      });
+      if ("error" in v) return v;
+      // Attach to a lead logged earlier this turn, else create one (G-7) with the estimate attached.
+      const lead =
+        r.leads.at(-1) ??
+        createLead(s, {
+          ...input,
+          volume: volumeLine(v),
+          lanes: v.lanes.map((l) => `FI → ${l.label} (${Math.round(l.share * 100)}%)`),
+          summary:
+            input.summary ??
+            `Business sender, ${volumeLine(v)}, lanes ${v.lanes.map((l) => l.label).join(", ")}. Indicative list-price estimate ${v.id} shown in chat; no discount promised.`,
+        });
+      v.leadId = lead.id;
+      lead.volumeQuote = v;
+      s.blocks.push({ type: "volume-quote", volumeQuote: v });
+      return { ...volumeForModel(v), leadId: lead.id, status: "Shown at list prices. Sales prepares contract pricing within one business day." };
+    }
     case "handoff_to_human": {
-      const h = {
+      const tried = [...s.issued, ...r.quotes];
+      // G-1 also applies to the drafted reply: the model never knows a real amount, so strip them all.
+      const draft = guardPrices(String(input.draftReply ?? ""), []);
+      draft.events.forEach((e) => addEvent(s, e));
+      const h: Handoff = {
         id: shortId("H"),
         intent: String(input.intent ?? "Customer request"),
         reason: String(input.reason ?? ""),
         details: (input.details as { label: string; value: string }[]) ?? [],
-        quoteIds: [...s.issued, ...r.quotes].map((q) => q.id),
+        quoteIds: tried.map((q) => q.id),
         summary: String(input.summary ?? ""),
         createdAt: Date.now(),
+        chatId: s.chatId,
+        shipment: { ...r.profile },
+        quotesTried: tried.map((q) => ({ id: q.id, productName: q.productName })),
+        urgency: (["low", "normal", "high"] as HandoffUrgency[]).find((u) => u === input.urgency) ?? "normal",
+        sentiment: typeof input.sentiment === "string" ? input.sentiment : undefined,
+        draftReply: draft.text || undefined,
+        status: "open",
       };
       r.handoffs.push(h);
       addEvent(s, event("G-5", "handed_off", h.intent));
@@ -253,9 +364,17 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
     }
     case "log_guideline": {
       const id = String(input.ruleId);
-      if (!RULE_IDS.includes(id)) return { error: "Unknown rule id." };
+      if (!RULE_IDS.includes(id) && !s.opsRuleIds?.includes(id)) return { error: "Unknown rule id." };
       const action = ["rephrased", "held", "routed"].includes(String(input.action)) ? (input.action as GuardEvent["action"]) : "rephrased";
       addEvent(s, event(id, action, String(input.excerpt ?? "")));
+      return { logged: true };
+    }
+    case "log_knowledge_gap": {
+      const topic = String(input.topic ?? "").trim().slice(0, 40);
+      if (!topic) return { error: "topic is required." };
+      const gaps = (r.gaps ??= []);
+      if (!gaps.some((g) => g.topic.toLowerCase() === topic.toLowerCase()))
+        gaps.push({ id: shortId("K"), topic, question: String(input.question ?? "").trim().slice(0, 160), at: Date.now() });
       return { logged: true };
     }
     case "suggest_replies": {
@@ -267,6 +386,6 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
       return { shown: true };
     }
     default:
-      return { error: `Unknown tool ${name}` };
+      return runParcelTool(s, name, input) ?? { error: `Unknown tool ${name}` };
   }
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import { useStore } from "@/lib/store";
+import { VolumeSummary } from "../VolumeQuoteCard";
 import { ago, useNow } from "./time";
 
 export default function LeadsPanel() {
@@ -55,6 +56,8 @@ export default function LeadsPanel() {
                   ))}
                 </ul>
               )}
+
+              {l.volumeQuote && <VolumeSummary v={l.volumeQuote} />}
 
               {l.summary && (
                 <p className="mt-3 border-t border-line pt-3 font-serif text-ink-soft">{l.summary}</p>

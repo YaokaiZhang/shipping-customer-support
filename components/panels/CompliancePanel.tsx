@@ -7,10 +7,10 @@ import rulesData from "@/data/rules.json";
 import testsData from "@/data/stress-tests.json";
 import saved from "@/data/stress-results.json";
 import { clock } from "./time";
+import { ruleName } from "@/lib/ops-rules";
 
 const rules = rulesData as Rule[];
 const tests = testsData as StressTest[];
-const shortOf = (id: string) => rules.find((r) => r.id === id)?.short ?? id;
 
 const ACTION: Record<GuardAction, string> = {
   stripped: "stripped",
@@ -29,7 +29,8 @@ const savedById = new Map((saved.results as StressResult[]).map((r) => [r.id, r]
 const statusOf = (r?: StressResult): Status => (!r ? "pending" : r.pass ? "pass" : "fail");
 
 export default function CompliancePanel() {
-  const { events } = useStore();
+  const { events, opsRules } = useStore();
+  const shortOf = (id: string) => ruleName(id, opsRules);
 
   /* ── stress suite: each test runs through the real agent via /api/stress-test ── */
   const [results, setResults] = useState<(StressResult | undefined)[]>(() => tests.map((t) => savedById.get(t.id)));
@@ -191,7 +192,7 @@ export default function CompliancePanel() {
         </div>
         <table className="w-full border-collapse">
           <tbody>
-            {rules.map((r) => {
+            {[...rules, ...opsRules.map((o) => ({ id: o.id, short: ruleName(o.id, opsRules) }))].map((r) => {
               const n = counts[r.id] ?? 0;
               return (
                 <tr key={r.id} className={`border-b border-line ${n > 0 ? "bg-label-yellow/40" : ""}`}>

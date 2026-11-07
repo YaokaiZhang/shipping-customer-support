@@ -2,6 +2,8 @@
 
 import { useState } from "react";
 import { fmtEta, fmtPrice } from "@/lib/pricing";
+import { useStore } from "@/lib/store";
+import { BookingForm } from "./BookingForm";
 import type { Quote } from "@/lib/types";
 
 const TAG_LABEL = { cheapest: "Cheapest", fastest: "Fastest", greenest: "Greenest" } as const;
@@ -14,12 +16,16 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
   const [on, setOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(quote.addOns.map((a) => [a.id, a.suggested])),
   );
-  const [booked, setBooked] = useState(false);
+  const { bookings } = useStore();
+  const booking = bookings.find((b) => b.quoteId === quote.id);
+  const booked = !!booking;
+  const expired = Date.now() > quote.validUntil;
+  const [open, setOpen] = useState(false);
   const total = quote.price + quote.addOns.reduce((s, a) => s + (on[a.id] ? a.price : 0), 0);
 
   return (
     <div
-      className={`card relative flex flex-col p-4 transition-shadow ${
+      className={`card relative flex flex-col p-4 transition-shadow ${open && !booked ? "sm:col-span-3" : ""} ${
         highlight ? "border-2 border-ink shadow-[4px_4px_0_var(--color-ink)]" : ""
       }`}
     >
@@ -58,9 +64,23 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
       </div>
 
       <div className="mt-auto pt-4">
-        <button className={`btn w-full justify-center ${booked ? "btn-ghost" : ""}`} onClick={() => setBooked(true)} disabled={booked}>
-          {booked ? "Booked ✓" : "Book"}
-        </button>
+        {open && !booked ? (
+          <BookingForm
+            quote={quote}
+            addOns={quote.addOns.filter((a) => on[a.id]).map((a) => a.id)}
+            onCancel={() => setOpen(false)}
+            onSent={() => setOpen(false)}
+          />
+        ) : (
+          <button
+            className={`btn w-full justify-center ${booked ? "btn-ghost" : ""}`}
+            onClick={() => setOpen(true)}
+            disabled={booked || expired}
+            title={booking ? booking.trackingNumber : undefined}
+          >
+            {booked ? "Booked ✓" : expired ? "Quote expired" : "Book this"}
+          </button>
+        )}
         <div className="mono mt-2 flex justify-between text-[0.72rem] text-ink-mute">
           <span>{quote.id}</span>
           <span>valid {hoursLeft(quote)}h</span>

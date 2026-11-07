@@ -1,20 +1,24 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import rules from "@/data/rules.json";
+import { ruleName } from "@/lib/ops-rules";
 import { useStore, type Tab } from "@/lib/store";
 import type { GuardEvent } from "@/lib/types";
 import { Parcel } from "./Parcel";
 import CompliancePanel from "./panels/CompliancePanel";
+import GuidelinesPanel from "./panels/GuidelinesPanel";
 import InboxPanel from "./panels/InboxPanel";
+import InsightsPanel from "./panels/InsightsPanel";
 import LeadsPanel from "./panels/LeadsPanel";
 import RoiPanel from "./panels/RoiPanel";
 
 const TABS: { id: Tab; label: string }[] = [
   { id: "parcel", label: "Parcel" },
-  { id: "leads", label: "Sales leads" },
-  { id: "inbox", label: "Agent inbox" },
+  { id: "leads", label: "Leads" },
+  { id: "inbox", label: "Inbox" },
   { id: "compliance", label: "Compliance" },
+  { id: "guide", label: "Guidelines" },
+  { id: "insights", label: "Insights" },
   { id: "roi", label: "ROI" },
 ];
 
@@ -45,6 +49,8 @@ export function SidePanel() {
         {tab === "leads" && <LeadsPanel />}
         {tab === "inbox" && <InboxPanel />}
         {tab === "compliance" && <CompliancePanel />}
+        {tab === "guide" && <GuidelinesPanel />}
+        {tab === "insights" && <InsightsPanel />}
         {tab === "roi" && <RoiPanel />}
       </div>
       <Toasts />
@@ -85,7 +91,7 @@ const ACTION: Record<GuardEvent["action"], string> = {
 };
 
 function Toasts() {
-  const { events, tab, setTab } = useStore();
+  const { events, tab, setTab, opsRules } = useStore();
   const [shown, setShown] = useState<GuardEvent[]>([]);
   const seen = useRef(0);
   const timers = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -106,7 +112,6 @@ function Toasts() {
   return (
     <div className="pointer-events-none absolute right-5 bottom-5 hidden flex-col items-end gap-2 lg:flex">
       {shown.map((e) => {
-        const r = rules.find((x) => x.id === e.ruleId);
         return (
           <button
             key={e.id}
@@ -114,7 +119,7 @@ function Toasts() {
             className="rise pointer-events-auto flex items-center gap-2 rounded-md bg-ink px-3 py-2 text-paper shadow-lg"
           >
             <span className="mono rounded-[3px] bg-label-yellow px-1.5 text-[0.72rem] font-bold text-ink">{e.ruleId}</span>
-            <span className="text-[0.95rem]">{r?.short}</span>
+            <span className="text-[0.95rem]">{ruleName(e.ruleId, opsRules)}</span>
             <span className="mono text-[0.75rem] text-paper/60">→ {ACTION[e.action]}</span>
           </button>
         );

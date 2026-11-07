@@ -1,6 +1,7 @@
 import productsJson from "@/data/products.json";
 import pricesJson from "@/data/prices.json";
 import { shortId } from "./id";
+import { packagingById } from "./packaging";
 import type { AddOn, Product, Quote, QuoteTag, ShipmentProfile, Zone } from "./types";
 
 export const products = productsJson as Product[];
@@ -63,10 +64,19 @@ function suggestAddOns(profile: ShipmentProfile): AddOn[] {
     },
     { id: "fragile", name: addOnCfg.fragile.name, price: addOnCfg.fragile.fee, suggested: !!profile.fragile },
     { id: "sms", name: addOnCfg.sms.name, price: addOnCfg.sms.fee, suggested: false },
+    ...packagingAddOns(profile),
   ];
 }
 
 const round = (n: number) => Math.round(n * 100) / 100;
+
+/** Packaging the customer selected on the photo estimate: pre-selected add-ons, priced from data/packaging.json. */
+function packagingAddOns(profile: ShipmentProfile): AddOn[] {
+  return (profile.packagingIds ?? []).flatMap((id) => {
+    const p = packagingById(id);
+    return p ? [{ id: `pkg-${p.id}`, name: p.name, price: p.price, suggested: true, reason: "packaging you chose" }] : [];
+  });
+}
 
 export function getQuote(productId: string, profile: ShipmentProfile): Quote | null {
   const p = products.find((x) => x.id === productId);

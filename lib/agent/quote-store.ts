@@ -11,3 +11,6 @@ export const saveQuote = (q: Quote) => store.set(q.id, q);
 
 /** Resolve the quotes issued in a chat. The server copy wins over the client's. */
 export const resolveQuotes = (client: Quote[]) => client.map((q) => store.get(q.id) ?? q);
+
+/** One quote by id from the server store (undefined if this server never issued it). */
+export const findQuote = (id: string) => store.get(id);

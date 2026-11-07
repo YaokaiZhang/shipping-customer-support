@@ -5,6 +5,10 @@ import { useStore } from "@/lib/store";
 import type { Block, Chip, Message } from "@/lib/types";
 import { EstimateCard } from "./EstimateCard";
 import { QuoteCard } from "./QuoteCard";
+import { BookingFormCard } from "./BookingForm";
+import { LabelCard } from "./LabelCard";
+import { TrackingCard } from "./TrackingCard";
+import { VolumeQuoteCard } from "./VolumeQuoteCard";
 
 const DEMO_PHOTO = "/demo/vase-a4.jpg";
 const STARTERS = [
@@ -12,6 +16,7 @@ const STARTERS = [
   "We're a small webshop sending ~50 parcels a week to Sweden.",
   "I'm shipping a laptop battery, just send it normally.",
   "I want a refund, my parcel never came.",
+  "Where's my parcel?",
 ];
 
 export function Chat() {
@@ -32,7 +37,7 @@ export function Chat() {
   };
 
   const onChip = (c: Chip) => {
-    if (c.action === "demo-photo") return send({ kind: "image", imageUrl: DEMO_PHOTO, demo: true });
+    if (c.action === "demo-photo") return send({ kind: "image", imageUrl: c.imageUrl ?? DEMO_PHOTO, demo: true });
     if (c.action === "upload") return fileRef.current?.click();
     submit(c.label);
   };
@@ -131,6 +136,11 @@ function MessageView({ m, chipsActive, onChip }: { m: Message; chipsActive: bool
   }
   return (
     <div className="rise space-y-3">
+      {m.from === "human" && (
+        <span className="sticker sticker-blue -rotate-1" title="Written by a person from the support team">
+          Human agent · {m.author ?? "NordParcel"}
+        </span>
+      )}
       {m.text && (
         <p className="max-w-[60ch] text-[1.28rem] leading-[1.25] tracking-[-0.3px] text-ink-soft">
           <Redacted text={m.text} />
@@ -175,6 +185,12 @@ function Redacted({ text }: { text: string }) {
 function BlockView({ b, messageId }: { b: Block; messageId: string }) {
   const { quotes, leads, handoffs, setTab } = useStore();
   switch (b.type) {
+    case "booking-form":
+      return <BookingFormCard quoteId={b.quoteId} />;
+    case "label":
+      return <LabelCard booking={b.booking} />;
+    case "tracking":
+      return <TrackingCard tracking={b.tracking} />;
     case "quotes":
       return (
         <div className="grid gap-3 pt-3 sm:grid-cols-3">
@@ -223,6 +239,8 @@ function BlockView({ b, messageId }: { b: Block; messageId: string }) {
         </button>
       );
     }
+    case "volume-quote":
+      return <VolumeQuoteCard v={b.volumeQuote} />;
   }
 }
 

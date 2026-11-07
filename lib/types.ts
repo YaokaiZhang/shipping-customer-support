@@ -21,6 +21,8 @@ export interface ShipmentProfile {
   dimsCm?: [number, number, number];
   fragile?: boolean;
   declaredValue?: number;
+  /** NordParcel packaging chosen on the photo estimate (data/packaging.json ids); added to quotes as AddOns. */
+  packagingIds?: string[];
 }
 
 export interface AddOn {
@@ -56,6 +58,15 @@ export interface DimensionEstimate {
   estWeightKg: number;
   confidence: number;
   referenceObjectFound: string | null;
+  /** What the item is, from the photo, e.g. "glass vase". */
+  itemLabel?: string;
+  /** Visible contents / hazard cues, e.g. "lithium battery pack", "glass", "liquid". */
+  cues?: string[];
+  fragile?: boolean;
+  /** Already in a box (true) or unpacked (false). */
+  packed?: boolean;
+  /** Deterministic matchRestriction() result for itemLabel + cues; null when nothing matched. */
+  restriction?: Restriction | null;
 }
 
 export interface Restriction {
@@ -73,7 +84,39 @@ export interface SalesLead {
   needs: string[];
   summary: string;
   createdAt: number;
+  /** Indicative monthly volume estimate at list prices (volume_quote), for the sales rep. */
+  volumeQuote?: VolumeQuote;
 }
+
+/** One destination lane of a business volume estimate. All money is at LIST prices (G-3). */
+export interface VolumeLane {
+  zone: Zone;
+  label: string;
+  share: number; // 0..1
+  parcelsPerMonth: number;
+  productId: string;
+  productName: string;
+  listPricePerParcel: number;
+  monthlyList: number;
+  co2KgPerMonth: number;
+  etaDays: [number, number];
+}
+
+/** Indicative monthly cost at list prices. Never discounted: sales prepares contract pricing. */
+export interface VolumeQuote {
+  id: string;
+  parcelsPerMonth: number;
+  avgWeightKg: number;
+  lanes: VolumeLane[];
+  monthlyListTotal: number;
+  avgPerParcel: number;
+  co2KgPerMonth: number;
+  currency: "EUR";
+  leadId?: string;
+  issuedAt: number;
+}
+
+export type HandoffUrgency = "low" | "normal" | "high";
 
 export interface Handoff {
   id: string;
@@ -83,6 +126,17 @@ export interface Handoff {
   quoteIds: string[];
   summary: string;
   createdAt: number;
+  /** Chat the handoff came from (set by the server or the client store). */
+  chatId?: string;
+  /** Snapshot of the shipment profile at handover. */
+  shipment?: ShipmentProfile;
+  /** Quotes shown in this chat, filled deterministically from turn state (never by the model). */
+  quotesTried?: { id: string; productName: string }[];
+  urgency?: HandoffUrgency;
+  sentiment?: string;
+  /** Reply the human agent can send as-is (price-guarded). */
+  draftReply?: string;
+  status?: "open" | "sent";
 }
 
 export type GuardAction = "stripped" | "rephrased" | "handed_off" | "held" | "routed";
@@ -95,21 +149,45 @@ export interface GuardEvent {
   at: number;
 }
 
+/** A live operations rule written by staff in the Guidelines tab (O-1, O-2, ...). */
+export interface OpsRule {
+  id: string;
+  text: string;
+  enabled: boolean;
+}
+
+/** A customer question the guidelines and products don't cover (log_knowledge_gap). */
+export interface KnowledgeGap {
+  id: string;
+  topic: string;
+  question: string;
+  at: number;
+}
+
 export type Block =
   | { type: "quotes"; quoteIds: string[]; highlight?: string }
+  | { type: "booking-form"; quoteId: string }
+  | { type: "label"; booking: Booking }
+  | { type: "tracking"; tracking: Tracking }
   | { type: "estimate"; estimate: DimensionEstimate; confirmed?: boolean }
   | { type: "restriction"; restriction: Restriction }
   | { type: "lead"; leadId: string }
-  | { type: "handoff"; handoffId: string };
+  | { type: "handoff"; handoffId: string }
+  | { type: "volume-quote"; volumeQuote: VolumeQuote };
 
 export interface Chip {
   label: string;
   action?: "demo-photo" | "upload";
+  /** For "demo-photo": which seeded photo under /public/demo (default: the vase). */
+  imageUrl?: string;
 }
 
 export interface Message {
   id: string;
   role: "user" | "assistant";
+  /** Assistant-side messages written by a human agent (sent from the inbox). Default: the AI agent. */
+  from?: "agent" | "human";
+  author?: string;
   text?: string;
   imageUrl?: string;
   blocks?: Block[];
@@ -134,17 +212,30 @@ export interface StressTest {
 
 export type TurnInput =
   | { kind: "text"; text: string }
+  /** Booking form submit: handled deterministically on the server, never by the LLM. */
+  | { kind: "book"; quoteId: string; sender: Address; recipient: Address; email?: string; addOns?: string[] }
   /** imageUrl is a public path for the demo photo, or a data: URL for uploads. */
   | { kind: "image"; imageUrl: string; demo: boolean }
-  | { kind: "estimate"; dims: [number, number, number]; weightKg: number; declaredValue?: number };
+  | {
+      kind: "estimate";
+      dims: [number, number, number];
+      weightKg: number;
+      declaredValue?: number;
+      /** Packaging selected on the estimate card (data/packaging.json ids). */
+      packagingIds?: string[];
+    };
 
 export interface TurnResult {
   messages: Message[];
   quotes: Quote[];
+  /** Bookings created this turn (the client keeps the list). */
+  bookings?: Booking[];
   leads: SalesLead[];
   handoffs: Handoff[];
   events: GuardEvent[];
   profile: ShipmentProfile;
+  /** Questions the guidelines/products don't cover (Insights panel). */
+  gaps?: KnowledgeGap[];
   /** Which engine answered: the real LLM agent or the scripted fallback. */
   engine?: "llm" | "mock";
   /** Present on LLM turns; used by the stress-test judge. */
@@ -155,8 +246,12 @@ export interface ChatRequest {
   chatId: string;
   history: Message[];
   profile: ShipmentProfile;
+  /** Bookings made earlier (client copies; the server store wins). */
+  bookings?: Booking[];
   quotes: Quote[]; // issued earlier in this chat (client copies; the server store wins)
   input: TurnInput;
+  /** Enabled operations rules from the Guidelines tab; followed from the very next message. */
+  opsRules?: OpsRule[];
 }
 
 export interface StressCheck {
@@ -181,4 +276,67 @@ export interface RoiVerdict {
   id: string;
   route: "agent" | "human" | "sales";
   reason: string;
+}
+
+/* ── booking + tracking ── */
+
+export interface Address {
+  name: string;
+  street?: string;
+  postcode?: string;
+  city: string;
+}
+
+export interface Booking {
+  id: string;
+  trackingNumber: string;
+  quoteId: string;
+  productId: string;
+  productName: string;
+  weightKg?: number;
+  dimsCm?: [number, number, number];
+  addOns: string[]; // add-on names
+  sender: Address;
+  recipient: Address;
+  email?: string;
+  etaDays: [number, number];
+  /** Pickup / drop-off instructions for the sender, per product. */
+  instructions: string;
+  createdAt: number;
+}
+
+export type TrackingStatus =
+  | "label_created"
+  | "in_transit"
+  | "delayed"
+  | "out_for_delivery"
+  | "delivered"
+  | "held_at_pickup"
+  | "returned";
+
+export type RerouteOption = "pickup_point" | "new_address" | "hold";
+
+export interface TrackingEvent {
+  at: number;
+  location: string;
+  text: string;
+}
+
+export interface Tracking {
+  trackingNumber: string;
+  product: string;
+  from: string;
+  to: string;
+  status: TrackingStatus;
+  /** Newest first. */
+  events: TrackingEvent[];
+  /** Estimated delivery window (epoch ms, day precision). Never a guarantee. */
+  estimate?: { from: number; to: number };
+  delayReason?: string;
+  pickupPoint?: string;
+  pickupBy?: number;
+  rerouteOptions: RerouteOption[];
+  pickupPoints: string[];
+  reroute?: { option: RerouteOption; detail: string; at: number };
+  source: "booking" | "network";
 }

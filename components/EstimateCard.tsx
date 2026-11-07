@@ -1,9 +1,11 @@
 "use client";
 
 import { useState } from "react";
+import { packedShipment, recommendPackaging } from "@/lib/packaging";
 import { standardBox } from "@/lib/pricing";
 import { useStore } from "@/lib/store";
 import type { DimensionEstimate } from "@/lib/types";
+import { DetectedItem, PackagingOffer, RestrictionNote } from "./PhotoCheck";
 
 export function EstimateCard({
   messageId,
@@ -25,7 +27,12 @@ export function EstimateCard({
     kg: statedKg ?? estimate.estWeightKg,
     value: "" as string,
   });
-  const box = standardBox([v.l, v.w, v.h]);
+  // Packaging follows the edited size; only offered once the photo told us what the item is.
+  const pick = estimate.packed === undefined ? null : recommendPackaging([v.l, v.w, v.h], estimate);
+  const [wantPkg, setWantPkg] = useState(true);
+  const pkgIds = pick && wantPkg ? pick.ids : undefined;
+  const box = standardBox(packedShipment([v.l, v.w, v.h], v.kg, pkgIds).dims);
+  const forbidden = estimate.restriction?.rule === "forbidden";
   const pct = Math.round(estimate.confidence * 100);
   const low = estimate.confidence < 0.7;
 
@@ -88,15 +95,29 @@ export function EstimateCard({
           <span className="mono text-xs text-ink-soft">▢ {box.join("×")}</span>
           <button
             className="btn !px-4 !py-1.5"
-            disabled={confirmed || busy}
+            disabled={confirmed || busy || forbidden}
             onClick={() =>
-              confirmEstimate(messageId, [v.l, v.w, v.h], v.kg, v.value ? parseFloat(v.value.replace(",", ".")) : undefined)
+              confirmEstimate(
+                messageId,
+                [v.l, v.w, v.h],
+                v.kg,
+                v.value ? parseFloat(v.value.replace(",", ".")) : undefined,
+                pkgIds,
+              )
             }
           >
-            {confirmed ? "Quoted ✓" : "Quote"}
+            {confirmed ? "Quoted ✓" : forbidden ? "Can't ship" : "Quote"}
           </button>
         </div>
       </div>
+
+      {(estimate.itemLabel || estimate.restriction || pick) && (
+        <div className="col-span-2 space-y-2 border-t border-dashed border-line pt-3">
+          <DetectedItem estimate={estimate} />
+          {estimate.restriction && <RestrictionNote r={estimate.restriction} />}
+          {pick && !forbidden && <PackagingOffer pick={pick} on={wantPkg} disabled={confirmed} onChange={setWantPkg} />}
+        </div>
+      )}
     </div>
   );
 }

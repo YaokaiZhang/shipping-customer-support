@@ -1,0 +1,47 @@
+{
+  "label": "last 7 days, sample",
+  "conversations": 412,
+  "gaps": [
+    {
+      "topic": "Weekend delivery",
+      "count": 23,
+      "examples": ["Can you deliver on Sunday?", "Do lockers get filled on Saturdays?", "Voiko paketin saada lauantaina?"]
+    },
+    {
+      "topic": "PO box delivery",
+      "count": 14,
+      "examples": ["Do you ship to PO boxes?", "Can I send to a postilokero in Oulu?"]
+    },
+    {
+      "topic": "Home pickup",
+      "count": 11,
+      "examples": ["Can a driver pick it up from my home?", "Is there pickup from my office for one parcel?"]
+    },
+    {
+      "topic": "Change address after booking",
+      "count": 8,
+      "examples": ["Can I change the delivery address after I paid?", "Wrong postcode on my booking, can you fix it?"]
+    },
+    {
+      "topic": "Åland customs",
+      "count": 5,
+      "examples": ["Do I need a customs form for Mariehamn?", "Is Åland inside the EU VAT area?"]
+    }
+  ],
+  "handoffs": [
+    { "intent": "Refund / claim", "count": 31 },
+    { "intent": "Lost parcel", "count": 17 },
+    { "intent": "Damaged item", "count": 9 },
+    { "intent": "Freight / oversized", "count": 4 }
+  ],
+  "ruleHits": [
+    { "ruleId": "G-1", "count": 12 },
+    { "ruleId": "G-2", "count": 27 },
+    { "ruleId": "G-3", "count": 19 },
+    { "ruleId": "G-4", "count": 15 },
+    { "ruleId": "G-5", "count": 57 },
+    { "ruleId": "G-6", "count": 6 },
+    { "ruleId": "G-7", "count": 22 },
+    { "ruleId": "G-8", "count": 3 }
+  ]
+}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import rules from "@/data/rules.json";
+import { ruleName, ruleText } from "@/lib/ops-rules";
 import { fmtEta } from "@/lib/pricing";
 import { useStore } from "@/lib/store";
 
@@ -33,7 +33,7 @@ function useTyped(text: string) {
 }
 
 export function Parcel() {
-  const { profile, quotes, chatQuoteIds, events, busy, messages } = useStore();
+  const { profile, quotes, chatQuoteIds, events, busy, messages, opsRules } = useStore();
   const lastBlock = [...messages].reverse().flatMap((m) => m.blocks ?? []).find((b) => b.type === "quotes");
   const latest = lastBlock?.type === "quotes" && lastBlock.highlight ? quotes[lastBlock.highlight] : undefined;
 
@@ -98,7 +98,7 @@ export function Parcel() {
 
             {ruleHits.map((id, i) => {
               const [left, top, r] = SLOTS[i];
-              const rule = rules.find((x) => x.id === id);
+              const rule = { short: ruleName(id, opsRules), text: ruleText(id, opsRules) };
               return (
                 <div
                   key={id}
