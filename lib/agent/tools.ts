@@ -1,7 +1,7 @@
 import type Anthropic from "@anthropic-ai/sdk";
 import rules from "@/data/rules.json";
 import { shortId } from "../id";
-import { compareOptions, detectPlace, fmtEta, getQuote, products, standardBox } from "../pricing";
+import { compareOptions, detectPlace, fmtEta, getQuote, products } from "../pricing";
 import { guardPrices } from "../guard";
 import { matchRestriction } from "../restrictions";
 import { volumeForModel, volumeLine, volumeQuote } from "../volume";
@@ -269,7 +269,7 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
       }
       if (typeof input.weightKg === "number" && input.weightKg > 0) p.weightKg = input.weightKg;
       const d = [input.lengthCm, input.widthCm, input.heightCm];
-      if (d.every((v) => typeof v === "number" && v > 0)) p.dimsCm = standardBox(d as [number, number, number]);
+      if (d.every((v) => typeof v === "number" && v > 0)) p.dimsCm = d as [number, number, number];
       if (typeof input.fragile === "boolean") p.fragile = input.fragile;
       if (typeof input.declaredValue === "number") p.declaredValue = input.declaredValue;
       r.profile = p;

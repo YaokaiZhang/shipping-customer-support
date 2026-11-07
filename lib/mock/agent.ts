@@ -155,7 +155,7 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
   if (item) r.profile.item = item.toLowerCase();
   if (has(t, RE.fragile)) r.profile.fragile = true;
   const dm = t.match(RE.dims);
-  if (dm) r.profile.dimsCm = standardBox([dm[1], dm[2], dm[3]].map((v) => parseFloat(v.replace(",", "."))) as [number, number, number]);
+  if (dm) r.profile.dimsCm = [dm[1], dm[2], dm[3]].map((v) => parseFloat(v.replace(",", "."))) as [number, number, number];
   const kg = t.match(RE.kg);
   if (kg) r.profile.weightKg = parseFloat(kg[1].replace(",", "."));
 
@@ -194,6 +194,31 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
   // ── Tracking / reroute ("where's my parcel?", NP123456789FI) ──
   const parcel = mockParcel(t, ctx);
   if (parcel) {
+    const ho = parcel.handover;
+    if (ho) {
+      const h: Handoff = {
+        id: shortId("H"),
+        intent: "Delivery change",
+        reason: `G-5 · ${ho.reason}`,
+        details: [
+          { label: "Tracking", value: ho.trackingNumber },
+          { label: "Requested", value: ho.request },
+          { label: "New address", value: ho.newAddress ?? "not given yet" },
+        ],
+        quoteIds: issued().map((q) => q.id),
+        summary: `Customer wants to change delivery of ${ho.trackingNumber}: ${ho.request.toLowerCase()}${ho.newAddress ? ` (${ho.newAddress})` : ""}.`,
+        createdAt: Date.now(),
+        ...mockPacket(t, ho.trackingNumber, r.profile, issued()),
+        draftReply: `Hi, NordParcel support here. I've picked up your request for ${ho.trackingNumber}${
+          ho.newAddress ? ` to go to ${ho.newAddress}` : ""
+        }. I'm checking with the depot whether it can still be changed and if it adds a cost, and I'll confirm within one business day.`,
+        urgency: "normal",
+      };
+      r.handoffs.push(h);
+      r.events.push(ev("G-5", "handed_off", t.slice(0, 48)));
+      push(parcel.text, { blocks: [{ type: "handoff", handoffId: h.id }] });
+      return r;
+    }
     push(parcel.text, parcel.extra);
     return r;
   }

@@ -164,7 +164,19 @@ export function findTracking(trackingNumber: string, clientBookings: Booking[] =
   return row ? withReroute(fromRow(row)) : null;
 }
 
-export type RerouteOutcome = { ok: true; tracking: Tracking } | { ok: false; error: string; tracking?: Tracking };
+export type RerouteOutcome =
+  | { ok: true; tracking: Tracking }
+  | { ok: false; error: string; tracking?: Tracking; handover?: boolean };
+
+/**
+ * Changes a person must make: any new address (cost, cross-border, customs) and any change after the first.
+ * Pickup point and hold stay in our network, so one of those is self-service.
+ */
+export function rerouteNeedsHuman(t: Tracking, option: RerouteOption): string | null {
+  if (option === "new_address") return "Address changes are made by a person on our team (cost and customs checks).";
+  if (t.reroute) return "This parcel's delivery was already changed once; further changes are made by a person on our team.";
+  return null;
+}
 
 export function rerouteParcel(
   trackingNumber: string,
@@ -183,6 +195,8 @@ export function rerouteParcel(
       error: `${OPTION_LABEL[option]} is not possible: the parcel is ${STATUS_LABEL[base.status].toLowerCase()}.`,
       tracking: t,
     };
+  const human = rerouteNeedsHuman(t, option);
+  if (human) return { ok: false, error: human, tracking: t, handover: true };
   let detail: string;
   let pickupPoint: string | undefined;
   if (option === "pickup_point") {
@@ -231,6 +245,9 @@ export function trackingForModel(t: Tracking) {
     rerouteAllowed: t.rerouteOptions,
     pickupPointsNearby: t.rerouteOptions.includes("pickup_point") ? t.pickupPoints : undefined,
     reroute: t.reroute ? `${OPTION_LABEL[t.reroute.option]}: ${t.reroute.detail}` : undefined,
+    selfService: t.reroute
+      ? "none left: any further change goes to handoff_to_human"
+      : "one change (pickup_point or hold); a new address goes to handoff_to_human",
     shownToCustomer: "tracking card with timeline",
   };
 }

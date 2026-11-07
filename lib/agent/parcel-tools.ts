@@ -31,7 +31,7 @@ export const PARCEL_TOOLS: Anthropic.Tool[] = [
   {
     name: "reroute_parcel",
     description:
-      "Reroute a parcel: to a pickup point, to a new address, or hold it at the terminal. Only options listed in track_parcel's rerouteAllowed work. Shows the updated tracking card.",
+      "Reroute a parcel to a pickup point or hold it at the terminal (one self-service change per parcel). Only options listed in track_parcel's rerouteAllowed work. A new address, or any second change, returns handover: true: then call handoff_to_human. Shows the updated tracking card.",
     input_schema: {
       type: "object",
       properties: {
@@ -78,6 +78,12 @@ export function runParcelTool(s: TurnState, name: string, input: In): unknown {
         { pickupPoint: input.pickupPoint as string | undefined, newAddress: input.newAddress as string | undefined },
         bookings,
       );
+      if (!o.ok && o.handover)
+        return {
+          handover: true,
+          reason: o.error,
+          next: "Call handoff_to_human now (intent 'Delivery change') with the tracking number, the requested change and any new address. Don't ask for anything else first.",
+        };
       if (!o.ok) return { error: o.error, ...(o.tracking ? { rerouteAllowed: o.tracking.rerouteOptions } : {}) };
       s.blocks.push({ type: "tracking", tracking: o.tracking });
       return { done: true, ...trackingForModel(o.tracking) };

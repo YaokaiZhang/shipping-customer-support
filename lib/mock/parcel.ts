@@ -14,6 +14,8 @@ export interface ParcelCtx {
 export interface ParcelReply {
   text: string;
   extra: Partial<Message>;
+  /** Set when the change needs a person (new address, second change). */
+  handover?: { trackingNumber: string; request: string; newAddress?: string; reason: string };
 }
 
 const RE = {
@@ -72,16 +74,14 @@ export function mockParcel(text: string, ctx: ParcelCtx): ParcelReply | null {
   const target = tn ?? (wantsReroute ? lastTracked(ctx.history) : undefined);
   if (wantsReroute && target) {
     const option: RerouteOption = RE.pickup.test(text) ? "pickup_point" : RE.hold.test(text) ? "hold" : "new_address";
-    const newAddress = text.match(RE.address)?.[1];
-    if (option === "new_address" && !newAddress) {
-      // Show the card again so the follow-up ("new address: ...") finds this parcel.
-      const t = findTracking(target, bookings);
-      return {
-        text: `Sure. What's the new address for ${target}? Street, postcode and city, like "new address: Hämeenkatu 10, 33100 Tampere".`,
-        extra: t ? { blocks: [{ type: "tracking", tracking: t }] } : {},
-      };
-    }
+    const newAddress = text.match(RE.address)?.[1]?.trim();
     const o = rerouteParcel(target, option, { newAddress }, bookings);
+    if (!o.ok && o.handover)
+      return {
+        text: `${o.error} I've passed it on with your tracking number${newAddress ? " and the new address" : ""}; expect a reply within one business day.`,
+        extra: {},
+        handover: { trackingNumber: target, request: OPTION_LABEL[option], newAddress, reason: o.error },
+      };
     if (!o.ok) return { text: o.error, extra: o.tracking ? { blocks: [{ type: "tracking", tracking: o.tracking }] } : {} };
     const w = fmtWindow(o.tracking);
     return {

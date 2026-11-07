@@ -4,7 +4,7 @@ import { opsRulesPrompt, sanitizeOpsRules } from "../ops-rules";
 import { shortId } from "../id";
 import { packedShipment, pickNames } from "../packaging";
 import { photoNote, photoPackaging, photoRestriction, detectionText, restrictionLine } from "../photo-check";
-import { fmtEta } from "../pricing";
+import { fmtEta, standardBox } from "../pricing";
 import type { Block, ChatRequest, Message, Quote, TurnResult } from "../types";
 import { EFFORT, MODEL, llm, textOf } from "./llm";
 import { contextNote, SYSTEM } from "./prompt";
@@ -126,10 +126,12 @@ export async function runTurn(req: ChatRequest): Promise<TurnResult> {
     const [l, w, h] = req.input.dims;
     // Our box (if chosen) sets the quoted size and weight; the packaging becomes a pre-selected add-on.
     const packed = packedShipment(req.input.dims, req.input.weightKg, req.input.packagingIds);
+    // Photo sizes are rough: quote the standard box the estimate card shows.
+    const box = standardBox(packed.dims);
     runTool(s, "update_shipment", {
-      lengthCm: packed.dims[0],
-      widthCm: packed.dims[1],
-      heightCm: packed.dims[2],
+      lengthCm: box[0],
+      widthCm: box[1],
+      heightCm: box[2],
       weightKg: packed.weightKg,
       ...(req.input.declaredValue ? { declaredValue: req.input.declaredValue } : {}),
     });
