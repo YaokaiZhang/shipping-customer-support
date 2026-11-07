@@ -51,7 +51,7 @@ export function TrackingCard({ tracking: t }: { tracking: Tracking }) {
         )}
       </div>
       <div className="mono mt-0.5 text-[0.75rem] text-ink-mute">
-        {[t.product, t.pickupPoint, t.pickupBy && `collect by ${fmtDay(t.pickupBy)}`].filter(Boolean).join(" · ")}
+        {[t.product, t.address ?? t.pickupPoint, t.pickupBy && `collect by ${fmtDay(t.pickupBy)}`].filter(Boolean).join(" · ")}
       </div>
 
       {t.delayReason && (

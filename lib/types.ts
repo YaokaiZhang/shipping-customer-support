@@ -335,6 +335,8 @@ export interface Tracking {
   delayReason?: string;
   pickupPoint?: string;
   pickupBy?: number;
+  /** Street address after a "new address" reroute. */
+  address?: string;
   rerouteOptions: RerouteOption[];
   pickupPoints: string[];
   reroute?: { option: RerouteOption; detail: string; at: number };

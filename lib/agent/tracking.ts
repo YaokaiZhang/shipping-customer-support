@@ -111,6 +111,17 @@ function fromRow(p: ParcelRow): Tracking {
   };
 }
 
+/** City from a free-text address: "Banegårdspladsen 7, 1570 København" → "København". */
+export function cityOf(address: string): string | undefined {
+  const parts = address.split(",").map((p) => p.trim()).filter(Boolean);
+  if (parts.length < 2) return undefined;
+  const last = parts[parts.length - 1]
+    .replace(/^[A-Z]{1,3}-/i, "")
+    .replace(/^[\d\s]+/, "")
+    .trim();
+  return /\p{L}/u.test(last) ? last : undefined;
+}
+
 /** Apply a stored reroute on top of the base record. */
 function withReroute(t: Tracking): Tracking {
   const r = reroutes.get(t.trackingNumber);
@@ -122,7 +133,15 @@ function withReroute(t: Tracking): Tracking {
     out.pickupPoint = r.pickupPoint;
     out.estimate = shift(1);
   } else if (r.option === "new_address") {
-    out.estimate = shift(1);
+    const city = cityOf(r.detail);
+    const moved = !!city && city.toLowerCase() !== t.to.toLowerCase();
+    out.product = "Home delivery";
+    out.address = r.detail;
+    if (city) {
+      out.to = city;
+      out.pickupPoints = pickupPointsFor(city);
+    }
+    out.estimate = shift(moved ? 2 : 1);
     if (t.status === "held_at_pickup") {
       out.status = "in_transit";
       out.pickupPoint = undefined;
