@@ -4,8 +4,8 @@ import { shortId } from "../id";
 import { compareOptions, detectPlace, fmtEta, getQuote, products } from "../pricing";
 import { guardPrices } from "../guard";
 import { matchRestriction } from "../restrictions";
-import { volumeForModel, volumeLine, volumeQuote } from "../volume";
-import type { Block, Booking, Chip, GuardEvent, Handoff, HandoffUrgency, Quote, SalesLead, ShipmentProfile, TurnResult, Zone } from "../types";
+import { redoVolume, volumeForModel, volumeLine, volumeQuote } from "../volume";
+import type { Block, Booking, Chip, GuardEvent, Handoff, HandoffUrgency, Quote, SalesLead, ShipmentProfile, TurnResult, VolumeQuote, Zone } from "../types";
 import { saveQuote } from "./quote-store";
 import { PARCEL_TOOLS, runParcelTool } from "./parcel-tools";
 
@@ -52,7 +52,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "compare_options",
     description:
-      "Issue quotes for the cheapest, greenest and fastest products that fit, and show them as three cards. Needs destination, weight and size.",
+      "Issue quotes for the cheapest, greenest and fastest products that fit, and show them as three cards. Needs destination, weight and size. If a volume estimate was shown in this chat, it instead redoes that monthly estimate with the size: which products fit, each priced per month.",
     input_schema: { type: "object", properties: {}, additionalProperties: false },
   },
   {
@@ -209,6 +209,8 @@ export interface TurnState {
   chatId?: string;
   /** Ids of the operations rules sent with this turn; log_guideline accepts them. */
   opsRuleIds?: string[];
+  /** Latest volume estimate in this chat. Once there is one, compare_options redoes it instead of issuing single-parcel cards. */
+  volume?: VolumeQuote;
 }
 
 const event = (ruleId: string, action: GuardEvent["action"], excerpt: string): GuardEvent => ({
@@ -290,6 +292,17 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
       return forModel(q);
     }
     case "compare_options": {
+      if (s.volume) {
+        // Business sender: answer per month on the estimate, not with single-parcel booking cards.
+        if (!r.profile.dimsCm) return { error: "Ask the customer for: size." };
+        const v = redoVolume(s.volume, r.profile);
+        if ("error" in v) return v;
+        if (!v.options?.length) return { error: "No parcel product fits that size on these lanes. Offer a handover for freight." };
+        s.volume = v;
+        (r.volumeUpdates ??= []).push(v);
+        s.blocks.push({ type: "volume-quote", volumeQuote: v });
+        return { ...volumeForModel(v), status: "Monthly estimate updated with the size: the card lists each product that fits, priced per month." };
+      }
       const m = missing(r.profile, true);
       if (m.length) return { error: `Ask the customer for: ${m.join(", ")}.` };
       const qs = compareOptions(r.profile);
@@ -318,6 +331,7 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
         avgWeightKg: Number(input.avgWeightKg),
         lanes: input.lanes as { zone?: string; destination?: string; share?: number }[],
         productId: typeof input.productId === "string" ? input.productId : undefined,
+        dimsCm: r.profile.dimsCm,
       });
       if ("error" in v) return v;
       // Attach to a lead logged earlier this turn, else create one (G-7) with the estimate attached.
@@ -333,6 +347,7 @@ export function runTool(s: TurnState, name: string, input: In): unknown {
         });
       v.leadId = lead.id;
       lead.volumeQuote = v;
+      s.volume = v;
       s.blocks.push({ type: "volume-quote", volumeQuote: v });
       return { ...volumeForModel(v), leadId: lead.id, status: "Shown at list prices. Sales prepares contract pricing within one business day." };
     }

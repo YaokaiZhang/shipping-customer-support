@@ -16,7 +16,11 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
   const [on, setOn] = useState<Record<string, boolean>>(() =>
     Object.fromEntries(quote.addOns.map((a) => [a.id, a.suggested])),
   );
-  const { bookings } = useStore();
+  const { bookings, messages } = useStore();
+  // In a volume chat, also show what this price means per month on the matching lane.
+  const vol = messages.flatMap((m) => m.blocks ?? []).findLast((b) => b.type === "volume-quote");
+  const v = vol?.type === "volume-quote" ? vol.volumeQuote : undefined;
+  const lane = v && (v.lanes.length === 1 ? v.lanes[0] : v.lanes.find((l) => l.zone === quote.inputs.zone));
   const booking = bookings.find((b) => b.quoteId === quote.id);
   const booked = !!booking;
   const expired = Date.now() > quote.validUntil;
@@ -38,7 +42,15 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
       <div className="label text-ink-mute">{quote.tags.map((t) => TAG_LABEL[t]).join(" · ") || "\u00a0"}</div>
       <div className="mt-1 text-[1.15rem] leading-tight">{quote.productName}</div>
 
-      <div className="mono mt-3 text-[1.6rem] font-bold leading-none tracking-tight">{fmtPrice(total)}</div>
+      <div className="mt-3 flex flex-wrap items-baseline gap-x-1.5">
+        <span className="mono text-[1.6rem] font-bold leading-none tracking-tight">{fmtPrice(total)}</span>
+        <span className="mono text-[0.72rem] whitespace-nowrap text-ink-mute">per parcel</span>
+      </div>
+      {lane && (
+        <div className="mono mt-1 text-[0.78rem] text-ink-soft">
+          × {lane.parcelsPerMonth} / mo ≈ {fmtPrice(total * lane.parcelsPerMonth)}
+        </div>
+      )}
       <div className="mono mt-1.5 text-[0.78rem] text-ink-soft">
         {fmtEta(quote.etaDays)} · {quote.co2Kg.toFixed(2)} kg CO₂
       </div>
@@ -98,9 +110,9 @@ export function QuoteCard({ quote, highlight }: { quote: Quote; highlight?: bool
             {booked ? "Booked ✓" : expired ? "Quote expired" : "Book this"}
           </button>
         )}
-        <div className="mono mt-2 text-right text-[0.68rem] text-ink-mute" title={`Valid ${hoursLeft(quote)}h`}>
-          {quote.id}
-        </div>
+        {!booked && !expired && (
+          <div className="mono mt-2 text-right text-[0.68rem] text-ink-mute">price held {hoursLeft(quote)} h</div>
+        )}
       </div>
     </div>
   );

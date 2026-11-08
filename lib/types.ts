@@ -114,6 +114,18 @@ export interface VolumeQuote {
   currency: "EUR";
   leadId?: string;
   issuedAt: number;
+  /** Typical parcel size, once known; `options` then lists every product it fits, priced per month. */
+  dimsCm?: [number, number, number];
+  options?: VolumeOption[];
+}
+
+/** One product priced for the whole monthly volume (all lanes), at list prices. */
+export interface VolumeOption {
+  productId: string;
+  productName: string;
+  monthlyList: number;
+  co2KgPerMonth: number;
+  etaDays: [number, number];
 }
 
 export type HandoffUrgency = "low" | "normal" | "high";
@@ -236,6 +248,8 @@ export interface TurnResult {
   profile: ShipmentProfile;
   /** Questions the guidelines/products don't cover (Insights panel). */
   gaps?: KnowledgeGap[];
+  /** Redone volume estimates; the client attaches each to its existing sales lead. */
+  volumeUpdates?: VolumeQuote[];
   /** Which engine answered: the real LLM agent or the scripted fallback. */
   engine?: "llm" | "mock";
   /** Present on LLM turns; used by the stress-test judge. */

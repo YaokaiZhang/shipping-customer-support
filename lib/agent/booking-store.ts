@@ -60,11 +60,11 @@ export type BookOutcome = { ok: true; booking: Booking; existing: boolean } | { 
  */
 export function bookQuote(input: Extract<TurnInput, { kind: "book" }>, clientQuotes: Quote[]): BookOutcome {
   const quote = findQuote(input.quoteId) ?? clientQuotes.find((q) => q.id === input.quoteId);
-  if (!quote) return { ok: false, error: `I can't find quote ${input.quoteId}. Let's get a fresh quote first.` };
+  if (!quote) return { ok: false, error: "I can't find that quote. Let's get a fresh one first." };
   const already = [...store.values()].find((b) => b.quoteId === quote.id);
   if (already) return { ok: true, booking: already, existing: true };
   if (Date.now() > quote.validUntil)
-    return { ok: false, error: `Quote ${quote.id} has expired (quotes are valid for 24 hours). I can issue a fresh one.` };
+    return { ok: false, error: `The ${quote.productName} price has expired (prices are held for 24 hours). I can issue a fresh quote.` };
 
   const sender = clean(input.sender);
   const recipient = clean(input.recipient);

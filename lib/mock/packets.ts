@@ -50,6 +50,6 @@ export function mockVolume(text: string, profile: ShipmentProfile) {
   const assumed = !lanes.length;
   if (assumed) lanes.push({ destination: "Finland", zone: "FI", share: 1 });
 
-  const v = volumeQuote({ parcelsPerMonth: parcels, avgWeightKg: weight, lanes });
+  const v = volumeQuote({ parcelsPerMonth: parcels, avgWeightKg: weight, lanes, dimsCm: profile.dimsCm });
   return { v, assumed: { parcels: !parseMonthlyVolume(text), weight: !kg && !profile.weightKg, lanes: assumed } };
 }

@@ -10,7 +10,7 @@ import { compareOptions, detectPlace, fmtEta, standardBox } from "../pricing";
 import { matchRestriction } from "../restrictions";
 import { bookingMessage, bookQuote } from "../agent/booking-store";
 import { mockParcel } from "./parcel";
-import { volumeLine } from "../volume";
+import { lastVolume, redoVolume, volumeLine } from "../volume";
 import { mockPacket, mockVolume } from "./packets";
 import { packedShipment } from "../packaging";
 import { photoPackaging, photoRestriction, restrictionLine } from "../photo-check";
@@ -250,6 +250,26 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
     return r;
   }
 
+  // Size or weight after a volume estimate: redo the monthly estimate instead of single-parcel cards.
+  const prevVol = lastVolume(ctx.history ?? []);
+  if (prevVol && (dm || kg) && !has(t, RE.volume)) {
+    const v = redoVolume(prevVol, r.profile);
+    if (!("error" in v)) {
+      const fit = v.options?.map((o) => o.productName) ?? [];
+      const list = fit.length > 1 ? `${fit.slice(0, -1).join(", ")} and ${fit.at(-1)}` : fit[0];
+      r.volumeUpdates = [v];
+      push(
+        v.dimsCm
+          ? fit.length
+            ? `I've updated the monthly estimate for ${v.dimsCm.join("×")} cm parcels. ${fit.length > 1 ? `They fit ${list}; the card compares them per month.` : `Only ${list} fits that size.`}`
+            : "Nothing in our parcel range fits that size. A colleague can look at freight options."
+          : `I've updated the monthly estimate for ${v.avgWeightKg} kg parcels. What's a typical size, so I can check which products fit?`,
+        { blocks: [{ type: "volume-quote", volumeQuote: v }] },
+      );
+      return r;
+    }
+  }
+
   if (has(t, RE.volume)) {
     // Indicative monthly cost at LIST prices (G-3) + the sales lead with the estimate attached (G-7).
     const { v, assumed } = mockVolume(t, r.profile);
@@ -302,7 +322,7 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
       r.events.push(ev("G-2", "rephrased", t.match(RE.guarantee)![0]));
       lines.push(
         last
-          ? `I can't guarantee a delivery day. ${last.id} is estimated at ${fmtEta(last.etaDays)}, so booking today gives it a good chance.`
+          ? `I can't guarantee a delivery day. ${last.productName} is estimated at ${fmtEta(last.etaDays)}, so booking today gives it a good chance.`
           : "I can't guarantee a delivery day; all times are estimates.",
       );
     }

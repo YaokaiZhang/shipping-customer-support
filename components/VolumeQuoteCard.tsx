@@ -55,8 +55,29 @@ export function VolumeQuoteCard({ v }: { v: VolumeQuote }) {
         </tbody>
       </table>
 
-      <div className="mono mt-2 flex items-center justify-between gap-3 text-[0.68rem] text-ink-mute">
-        <span>{v.id}</span>
+      {v.dimsCm && (
+        <div className="mt-3 border-t border-line pt-3">
+          <div className="label text-ink-mute">
+            {v.dimsCm.join("×")} cm · {v.options?.length ? "fits" : "fits no parcel product"}
+          </div>
+          {!!v.options?.length && (
+            <ul className="mono mt-1.5 space-y-1 text-[0.82rem]">
+              {v.options.map((o) => (
+                <li key={o.productId} className="flex items-baseline gap-3">
+                  <span className="min-w-0 flex-1 truncate font-serif text-[1rem]">{o.productName}</span>
+                  <span className="hidden text-[0.72rem] text-ink-mute sm:inline">
+                    {fmtEta(o.etaDays)} · {o.co2KgPerMonth.toFixed(1)} kg CO₂
+                  </span>
+                  <span className="w-24 text-right whitespace-nowrap">{fmtPrice(o.monthlyList)}</span>
+                </li>
+              ))}
+            </ul>
+          )}
+          {!!v.options?.length && <div className="mono mt-1 text-right text-[0.68rem] text-ink-mute">per month at list prices</div>}
+        </div>
+      )}
+
+      <div className="mono mt-2 flex items-center justify-end gap-3 text-[0.68rem] text-ink-mute">
         {v.leadId && (
           <button type="button" className="underline-offset-2 hover:text-ink hover:underline" onClick={() => setTab("leads")}>
             lead {v.leadId} →

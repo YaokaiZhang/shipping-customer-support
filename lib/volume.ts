@@ -1,6 +1,6 @@
 import { shortId } from "./id";
 import { detectPlace, getQuote, products } from "./pricing";
-import type { Quote, VolumeLane, VolumeQuote, Zone } from "./types";
+import type { Message, Quote, ShipmentProfile, VolumeLane, VolumeOption, VolumeQuote, Zone } from "./types";
 
 /**
  * Business volume estimate at LIST prices (G-3: no discounts in chat).
@@ -23,6 +23,8 @@ export interface VolumeInput {
   avgWeightKg?: number;
   lanes?: VolumeLaneInput[];
   productId?: string;
+  /** Typical parcel size; when given, only products it fits are used and the card compares them per month. */
+  dimsCm?: [number, number, number];
 }
 
 const round2 = (n: number) => Math.round(n * 100) / 100;
@@ -35,8 +37,8 @@ function laneZone(l: VolumeLaneInput): { zone: Zone; label: string } | null {
 }
 
 /** Cheapest list-price parcel product for this zone and weight; `preferred` wins when it fits. */
-function pickQuote(zone: Zone, weightKg: number, preferred?: string): Quote | null {
-  const profile = { from: "Helsinki", zone, weightKg };
+function pickQuote(zone: Zone, weightKg: number, preferred?: string, dimsCm?: [number, number, number]): Quote | null {
+  const profile = { from: "Helsinki", zone, weightKg, dimsCm };
   if (preferred) {
     const q = getQuote(preferred, profile);
     if (q) return q;
@@ -67,7 +69,7 @@ export function volumeQuote(input: VolumeInput): VolumeQuote | { error: string }
   for (let i = 0; i < given.length; i++) {
     const { zone, label } = given[i].z!;
     const share = filled[i] / total;
-    const q = pickQuote(zone, w, input.productId);
+    const q = pickQuote(zone, w, input.productId, input.dimsCm);
     if (!q) continue;
     const n = Math.round(parcels * share);
     lanes.push({
@@ -87,6 +89,25 @@ export function volumeQuote(input: VolumeInput): VolumeQuote | { error: string }
 
   const monthlyListTotal = round2(lanes.reduce((a, l) => a + l.monthlyList, 0));
   const counted = lanes.reduce((a, l) => a + l.parcelsPerMonth, 0) || parcels;
+
+  // With a known size: every parcel product that fits all lanes, priced for the whole month.
+  const options: VolumeOption[] = [];
+  if (input.dimsCm) {
+    for (const id of PARCEL_PRODUCTS) {
+      const qs = lanes.map((l) => getQuote(id, { from: "Helsinki", zone: l.zone, weightKg: w, dimsCm: input.dimsCm }));
+      if (qs.some((q) => !q)) continue;
+      const ok = qs as Quote[];
+      options.push({
+        productId: id,
+        productName: ok[0].productName,
+        monthlyList: round2(ok.reduce((a, q, i) => a + q.price * lanes[i].parcelsPerMonth, 0)),
+        co2KgPerMonth: round2(ok.reduce((a, q, i) => a + q.co2Kg * lanes[i].parcelsPerMonth, 0)),
+        etaDays: [Math.min(...ok.map((q) => q.etaDays[0])), Math.max(...ok.map((q) => q.etaDays[1]))],
+      });
+    }
+    options.sort((a, b) => a.monthlyList - b.monthlyList);
+  }
+
   return {
     id: shortId("V"),
     parcelsPerMonth: parcels,
@@ -97,7 +118,29 @@ export function volumeQuote(input: VolumeInput): VolumeQuote | { error: string }
     co2KgPerMonth: round2(lanes.reduce((a, l) => a + l.co2KgPerMonth, 0)),
     currency: "EUR",
     issuedAt: Date.now(),
+    ...(input.dimsCm ? { dimsCm: input.dimsCm, options } : {}),
   };
+}
+
+/** Redo an earlier estimate with what the chat has learned since (size, weight). Keeps lanes, volume and the sales lead. */
+export function redoVolume(prev: VolumeQuote, profile: ShipmentProfile): VolumeQuote | { error: string } {
+  const v = volumeQuote({
+    parcelsPerMonth: prev.parcelsPerMonth,
+    avgWeightKg: profile.weightKg ?? prev.avgWeightKg,
+    lanes: prev.lanes.map((l) => ({ destination: l.label, zone: l.zone, share: l.share })),
+    dimsCm: profile.dimsCm ?? prev.dimsCm,
+  });
+  if (!("error" in v)) v.leadId = prev.leadId;
+  return v;
+}
+
+/** The latest volume estimate shown in this chat, if any. */
+export function lastVolume(history: Message[]): VolumeQuote | undefined {
+  for (let i = history.length - 1; i >= 0; i--) {
+    const b = history[i].blocks?.findLast((x) => x.type === "volume-quote");
+    if (b?.type === "volume-quote") return b.volumeQuote;
+  }
+  return undefined;
 }
 
 /** What the model may see: no money at all. */
@@ -108,6 +151,7 @@ export function volumeForModel(v: VolumeQuote) {
     avgWeightKg: v.avgWeightKg,
     lanes: v.lanes.map((l) => ({ lane: l.label, zone: l.zone, sharePct: Math.round(l.share * 100), parcelsPerMonth: l.parcelsPerMonth, recommendedProduct: l.productName })),
     co2KgPerMonth: v.co2KgPerMonth,
+    ...(v.dimsCm ? { sizeCm: v.dimsCm.join("×"), productsThatFit: v.options?.map((o) => o.productName) ?? [] } : {}),
     prices: "list prices shown on the card only; sales prepares contract pricing",
   };
 }

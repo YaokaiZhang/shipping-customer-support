@@ -58,6 +58,11 @@ function Lead({ l }: { l: SalesLead }) {
               </li>
             ))}
           </ul>
+          {v.dimsCm && (
+            <p className="mono mt-1.5 text-[0.72rem] text-ink-soft">
+              {v.dimsCm.join("×")} cm · fits {v.options?.map((o) => o.productName).join(", ") || "no parcel product"}
+            </p>
+          )}
           <div className="mt-2 flex items-baseline justify-between gap-3">
             <span className="mono text-[0.7rem] text-ink-mute" title="Indicative, at list prices. Contract pricing is set by sales.">
               list estimate · {v.co2KgPerMonth.toFixed(0)} kg CO₂

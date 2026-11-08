@@ -48,7 +48,7 @@ export function BookingForm({
     const recipient: Address = { name: v.name, street: v.street, postcode: v.postcode, city: v.city };
     send(
       { kind: "book", quoteId: quote.id, sender, recipient, email: v.email.trim() || undefined, addOns },
-      { text: `Book ${quote.id} (${quote.productName}) to ${recipient.name}, ${recipient.city}` },
+      { text: `Book ${quote.productName} to ${recipient.name}, ${recipient.city}` },
     );
     onSent?.();
   };
@@ -118,7 +118,7 @@ export function BookingFormCard({ quoteId }: { quoteId: string }) {
     <div className="card rise space-y-3 p-4">
       <div className="flex items-baseline justify-between gap-3">
         <div className="text-[1.15rem] leading-tight">
-          Book {q.productName} <span className="mono text-[0.7rem] text-ink-mute">{q.id}</span>
+          Book {q.productName}
         </div>
         {booking && <span className="sticker sticker-green -rotate-2" title={booking.trackingNumber}>BOOKED</span>}
       </div>

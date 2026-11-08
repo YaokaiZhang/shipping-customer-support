@@ -13,6 +13,7 @@ import { bookingMessage, bookQuote } from "./booking-store";
 import { fmtWindow, OPTION_LABEL, STATUS_LABEL } from "./tracking";
 import { runTool, TOOLS, type TurnState } from "./tools";
 import { estimateDimensions } from "./vision";
+import { lastVolume } from "../volume";
 
 const MAX_STEPS = 8;
 
@@ -47,7 +48,9 @@ function blockNote(b: Block, quotes: Map<string, Quote>): string {
       const v = b.volumeQuote; // ids and product names only, never money
       return `[Volume estimate card ${v.id} shown at list prices: ~${v.parcelsPerMonth} parcels/month, ${v.lanes
         .map((l) => `${l.label} ${Math.round(l.share * 100)}% → ${l.productName}`)
-        .join("; ")}${v.leadId ? `; sales lead ${v.leadId} created` : ""}]`;
+        .join("; ")}${v.dimsCm ? `; size ${v.dimsCm.join("×")} cm fits ${v.options?.map((o) => o.productName).join(", ") || "nothing"}` : ""}${
+        v.leadId ? `; sales lead ${v.leadId}` : ""
+      }]`;
     }
   }
 }
@@ -84,6 +87,7 @@ export async function runTurn(req: ChatRequest): Promise<TurnResult> {
     chatId: req.chatId,
     opsRuleIds: ops.map((r) => r.id),
     bookings: req.bookings ?? [],
+    volume: lastVolume(req.history),
   };
 
   // Booking form submit → deterministic booking + label. Never goes through the model.

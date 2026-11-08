@@ -88,7 +88,10 @@ function reducer(s: State, a: Action): State {
         quotes,
         chatQuoteIds: [...s.chatQuoteIds, ...r.quotes.map((q) => q.id)],
         messages: [...s.messages, ...r.messages],
-        leads: [...r.leads, ...s.leads],
+        leads: [...r.leads, ...s.leads].map((l) => {
+          const v = r.volumeUpdates?.findLast((x) => x.leadId === l.id);
+          return v ? { ...l, volumeQuote: v } : l;
+        }),
         bookings: [...(r.bookings ?? []), ...s.bookings],
         handoffs: [...r.handoffs.map((h) => ({ ...h, chatId: h.chatId ?? s.chatId, status: h.status ?? ("open" as const) })), ...s.handoffs],
         events: [...r.events, ...s.events],
