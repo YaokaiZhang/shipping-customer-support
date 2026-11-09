@@ -1,5 +1,5 @@
 import parcels from "@/data/parcels.json";
-import type { Booking, RerouteOption, Tracking, TrackingEvent, TrackingStatus } from "../types";
+import type { Booking, Chip, RerouteOption, Tracking, TrackingEvent, TrackingStatus } from "../types";
 import { getBooking } from "./booking-store";
 
 /**
@@ -41,6 +41,15 @@ const day = (offsetDays: number, from = Date.now()) => {
 
 /** A tracking number the demo user can try (the weather-delayed parcel). */
 export const DEMO_TRACKING = "NP220917465FI";
+
+/** A demo order for refund / claim chats: no scan for 9 days. */
+export const DEMO_CLAIM = "NP934417028FI";
+
+/** Customer messages about refunds, claims, lost or damaged parcels (G-5). */
+export const CLAIM_RE = /refund|money back|claim|compensation|never (came|arrived)|lost|arrived broken|damaged/i;
+
+/** Reply chips when the agent asks for the tracking number of a claim. */
+export const claimChips = (): Chip[] => [{ label: `It's ${DEMO_CLAIM}` }, { label: "I don't have it" }];
 
 const OPTIONS_BY_STATUS: Record<TrackingStatus, RerouteOption[]> = {
   label_created: ["pickup_point", "new_address", "hold"],

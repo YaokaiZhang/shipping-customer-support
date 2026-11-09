@@ -10,6 +10,7 @@ import { compareOptions, detectPlace, fmtEta, standardBox } from "../pricing";
 import { matchRestriction } from "../restrictions";
 import { bookingMessage, bookQuote } from "../agent/booking-store";
 import { lastTracked, mockParcel } from "./parcel";
+import { CLAIM_RE, claimChips, findTracking, STATUS_LABEL } from "../agent/tracking";
 import { lastVolume, redoVolume, volumeLine } from "../volume";
 import { mockPacket, mockVolume } from "./packets";
 import { packedShipment } from "../packaging";
@@ -72,7 +73,7 @@ function pendingClaim(history: Message[] = []): string | undefined {
 
 const RE = {
   injection: /ignore (your|all|previous|the) (rules|instructions)|system prompt|you are now|developer mode/i,
-  refund: /refund|money back|claim|compensation|never (came|arrived)|lost|arrived broken|damaged/i,
+  refund: CLAIM_RE,
   volume: /(\d+)\s*(parcels|packages|shipments|orders)\s*(a|per|\/)\s*(day|week|month)|webshop|web shop|e-?shop|online store|our (company|business|store)|we're a|we are a|per month|a month|monthly|\bbusiness\b(?! day)|\bvolume\b/i,
   guarantee: /guarantee|promise|for sure|definitely arrive|arrive(s)? (by|on|before)/i,
   discount: /discount|\d+\s?% off|% discount|cheaper price|coupon|deal/i,
@@ -185,11 +186,14 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
     if (claim === undefined && !tracking) {
       push(
         `I'm sorry about that. ${CLAIM_ASK} It starts with NP and is on the label or the shipping email. If you don't have it, tell me roughly when you sent it, from where to where, and what was inside, and I'll pass it to a colleague.`,
-        { chips: [{ label: "I don't have it" }] },
+        { chips: claimChips() },
       );
       return r;
     }
     const said = claim ?? t;
+    const tr = tracking ? findTracking(tracking, ctx.bookings ?? []) : undefined;
+    const lastEv = tr?.events[0];
+    const scan = tr && lastEv ? `${STATUS_LABEL[tr.status]}: ${lastEv.text}, ${lastEv.location}, ${new Date(lastEv.at).toLocaleDateString("en-GB")}` : undefined;
     const h: Handoff = {
       id: shortId("H"),
       intent: "Refund / claim",
@@ -197,6 +201,7 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
       details: [
         { label: "Customer said", value: said },
         { label: "Tracking", value: tracking ?? "not given" },
+        ...(scan ? [{ label: "Last scan", value: scan }] : []),
         ...(claim !== undefined && !tracking ? [{ label: "Order details", value: t }] : []),
         ...(r.profile.to ? [{ label: "Route", value: `${r.profile.from} → ${r.profile.to}` }] : []),
       ],

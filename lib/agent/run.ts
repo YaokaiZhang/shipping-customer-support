@@ -10,7 +10,7 @@ import { EFFORT, MODEL, llm, textOf } from "./llm";
 import { contextNote, SYSTEM } from "./prompt";
 import { resolveQuotes } from "./quote-store";
 import { bookingMessage, bookQuote } from "./booking-store";
-import { fmtWindow, OPTION_LABEL, STATUS_LABEL } from "./tracking";
+import { CLAIM_RE, claimChips, fmtWindow, OPTION_LABEL, STATUS_LABEL } from "./tracking";
 import { runTool, TOOLS, type TurnState } from "./tools";
 import { estimateDimensions } from "./vision";
 import { lastVolume } from "../volume";
@@ -200,6 +200,8 @@ export async function runTurn(req: ChatRequest): Promise<TurnResult> {
   s.result.events.unshift(...g.events);
   const msg: Message = { id: shortId("M", 6), role: "assistant", text: g.text };
   if (s.blocks.length) msg.blocks = s.blocks;
+  // Asking for a claim's tracking number: offer the demo order and "I don't have it".
+  if (!s.result.handoffs.length && CLAIM_RE.test(userText) && /tracking number/i.test(g.text)) s.chips = claimChips();
   if (s.chips.length) msg.chips = s.chips;
   if (g.events.length) msg.guarded = ["G-1"];
   s.result.messages.push(msg);
