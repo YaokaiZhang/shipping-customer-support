@@ -145,6 +145,15 @@ export default function GuidelinesPanel() {
                       />
                       <span className="switch" />
                     </label>
+                    <button
+                      type="button"
+                      title="Delete rule"
+                      aria-label={`Delete rule ${r.id}`}
+                      className="mono -mr-1 shrink-0 px-1 text-lg leading-none text-ink-mute hover:text-accent-red"
+                      onClick={() => remove(r.id)}
+                    >
+                      ×
+                    </button>
                   </div>
                 )}
               </li>
