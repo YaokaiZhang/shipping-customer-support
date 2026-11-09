@@ -27,7 +27,7 @@ const RE = {
 };
 
 /** Last tracking number shown on a card in this chat. */
-function lastTracked(history: Message[] = []): string | undefined {
+export function lastTracked(history: Message[] = []): string | undefined {
   for (let i = history.length - 1; i >= 0; i--) {
     const blocks = history[i].blocks ?? [];
     for (let j = blocks.length - 1; j >= 0; j--) {

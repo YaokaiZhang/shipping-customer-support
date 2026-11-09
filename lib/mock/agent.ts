@@ -9,7 +9,7 @@ import { shortId } from "../id";
 import { compareOptions, detectPlace, fmtEta, standardBox } from "../pricing";
 import { matchRestriction } from "../restrictions";
 import { bookingMessage, bookQuote } from "../agent/booking-store";
-import { mockParcel } from "./parcel";
+import { lastTracked, mockParcel } from "./parcel";
 import { lastVolume, redoVolume, volumeLine } from "../volume";
 import { mockPacket, mockVolume } from "./packets";
 import { packedShipment } from "../packaging";
@@ -58,6 +58,17 @@ const ev = (ruleId: string, action: GuardEvent["action"], excerpt: string): Guar
 });
 
 const has = (t: string, re: RegExp) => re.test(t);
+
+/** Any carrier-style parcel number (NP123456789FI and similar). */
+const PARCEL_NO = /\b[A-Z]{2}\d{6,}[A-Z]{0,2}\b/i;
+const CLAIM_ASK = "What's the tracking number?";
+
+/** The customer's refund message, if the agent's last reply asked for its tracking number. */
+function pendingClaim(history: Message[] = []): string | undefined {
+  const a = history.at(-1);
+  const u = history.at(-2);
+  if (a?.role === "assistant" && a.from !== "human" && a.text?.includes(CLAIM_ASK) && u?.role === "user") return u.text ?? "";
+}
 
 const RE = {
   injection: /ignore (your|all|previous|the) (rules|instructions)|system prompt|you are now|developer mode/i,
@@ -167,27 +178,39 @@ export async function mockTurn(ctx: TurnContext, input: TurnInput): Promise<Turn
     return r;
   }
 
-  if (has(t, RE.refund)) {
-    const tracking = t.match(/\b[A-Z]{2}\d{6,}[A-Z]{0,2}\b/)?.[0];
+  // Refunds and claims (G-5): ask once for the tracking number, then hand off with whatever the customer gave.
+  const claim = pendingClaim(ctx.history);
+  if (claim !== undefined || has(t, RE.refund)) {
+    const tracking = (t.match(PARCEL_NO) ?? claim?.match(PARCEL_NO))?.[0]?.toUpperCase() ?? lastTracked(ctx.history);
+    if (claim === undefined && !tracking) {
+      push(
+        `I'm sorry about that. ${CLAIM_ASK} It starts with NP and is on the label or the shipping email. If you don't have it, tell me roughly when you sent it, from where to where, and what was inside, and I'll pass it to a colleague.`,
+        { chips: [{ label: "I don't have it" }] },
+      );
+      return r;
+    }
+    const said = claim ?? t;
     const h: Handoff = {
       id: shortId("H"),
       intent: "Refund / claim",
       reason: "G-5 · refunds and claims go to a human",
       details: [
-        { label: "Customer said", value: t },
+        { label: "Customer said", value: said },
         { label: "Tracking", value: tracking ?? "not given" },
+        ...(claim !== undefined && !tracking ? [{ label: "Order details", value: t }] : []),
         ...(r.profile.to ? [{ label: "Route", value: `${r.profile.from} → ${r.profile.to}` }] : []),
       ],
       quoteIds: issued().map((q) => q.id),
       summary: `Customer requests a refund${tracking ? ` for ${tracking}` : ""}. No promises made in chat.`,
       createdAt: Date.now(),
-      ...mockPacket(t, tracking, r.profile, issued()),
+      ...mockPacket(said, tracking, r.profile, issued()),
     };
     r.handoffs.push(h);
-    r.events.push(ev("G-5", "handed_off", t.slice(0, 48)));
-    push("I'm sorry about that. A colleague will take it from here, with everything you've told me so far. Expect a reply within one business day.", {
-      blocks: [{ type: "handoff", handoffId: h.id }],
-    });
+    r.events.push(ev("G-5", "handed_off", said.slice(0, 48)));
+    push(
+      `${claim !== undefined ? "Thank you." : "I'm sorry about that."} A colleague will take it from here with everything you've told me${tracking ? `, including ${tracking}` : ""}. Expect a reply within one business day.`,
+      { blocks: [{ type: "handoff", handoffId: h.id }] },
+    );
     return r;
   }
 

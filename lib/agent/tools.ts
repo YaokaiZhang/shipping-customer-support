@@ -116,7 +116,7 @@ export const TOOLS: Anthropic.Tool[] = [
   {
     name: "handoff_to_human",
     description:
-      "Hand the conversation to a human agent with a structured summary so they never re-ask. Required for refunds, claims, lost or damaged parcels.",
+      "Hand the conversation to a human agent with a structured summary so they never re-ask. Required for refunds, claims, lost or damaged parcels (ask once for the tracking number first if you don't have it).",
     input_schema: {
       type: "object",
       properties: {
